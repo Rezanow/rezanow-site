@@ -182,6 +182,30 @@ width: 100%;
     .modal-box h2 { margin-top: 0; color: #205c36; }
     .modal-actions { margin-top: 20px; display: flex; gap: 10px; justify-content: center; }
     .modal-actions button { background: #205c36; color: white; padding: 10px 20px; font-size: 14px; }
+
+    .run-stats {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      font-size: 12px;
+      padding: 4px 8px;
+      background: rgba(0,0,0,0.2);
+      border-top: 1px solid rgba(255,255,255,0.1);
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .run-stats span { opacity: 0.95; }
+
+    .stats-grid {
+      text-align: left;
+      margin-top: 10px;
+      display: grid;
+      grid-template-columns: auto auto;
+      gap: 6px 16px;
+      font-size: 14px;
+    }
+
+    .stats-grid strong { text-align: right; }
     
     @media (prefers-reduced-motion: reduce){
       * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
@@ -451,12 +475,19 @@ header .controls > *{ flex: 0 0 auto; }
 
       
       <button id="rulesBtn" title="View rules">Rules</button>
+      <button id="statsBtn" title="View stats">Stats</button>
 <button id="autoBtn">Auto</button>
       <button id="giveUpBtn">Give Up</button>
       <button id="undoBtn">Undo</button>
       <button id="newGameBtn">New</button>
     </div>
   </header>
+
+  <div class="run-stats" id="runStatsBar">
+    <span id="moveCountStat">Moves: 0</span>
+    <span id="elapsedTimeStat">Time: 00:00</span>
+    <span id="undoCountStat">Undos: 0</span>
+  </div>
 
   <div class="app">
     <div class="top-section">
@@ -518,6 +549,17 @@ header .controls > *{ flex: 0 0 auto; }
     </div>
   </div>
 
+  <div id="modalStats" class="modal-overlay">
+    <div class="modal-box">
+      <h2>Stats</h2>
+      <div class="stats-grid" id="statsGrid"></div>
+      <div class="modal-actions">
+        <button id="resetStatsBtn">Reset Stats</button>
+        <button id="closeStatsBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
 <script>
 const suits = ["♠","♥","♦","♣"];
 const ranks = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
@@ -527,6 +569,8 @@ const suitClass = { "♠":"spades", "♥":"hearts", "♦":"diamonds", "♣":"clu
 
 const SUIT_STYLE_KEY = "rs_suitStyle_v1";
 const GAME_STATE_KEY = "rs_gameState_v1";
+const STATS_HISTORY_KEY = "rs_statsHistory_v1";
+const MAX_STATS_HISTORY = 100;
 const APP_VERSION = "__APP_VERSION__";
 
 function applySuitStyle(style){
@@ -572,6 +616,12 @@ let foundations=[[],[],[],[]];
 let hand=[null,null,null];
 let historyStack=[];
 let selected=null;
+let moveCount=0;
+let undoCount=0;
+let elapsedMs=0;
+let timerInterval=null;
+let lastTickTs=Date.now();
+let gameFinished=false;
 
 const MAX_PERSISTED_HISTORY = 150;
 
@@ -581,7 +631,11 @@ function persistGameState(){
     tableau,
     foundations,
     hand,
-    historyStack: persistedHistory
+    historyStack: persistedHistory,
+    moveCount,
+    undoCount,
+    elapsedMs,
+    gameFinished
   };
 
   // Browsers have strict localStorage quotas; if persistence fails, trim
@@ -607,11 +661,121 @@ function loadPersistedGameState(){
     foundations = parsed.foundations;
     hand = parsed.hand;
     historyStack = Array.isArray(parsed.historyStack) ? parsed.historyStack : [];
+    moveCount = Number.isFinite(parsed.moveCount) ? parsed.moveCount : 0;
+    undoCount = Number.isFinite(parsed.undoCount) ? parsed.undoCount : 0;
+    elapsedMs = Number.isFinite(parsed.elapsedMs) ? parsed.elapsedMs : 0;
+    gameFinished = !!parsed.gameFinished;
     selected = null;
     return true;
   } catch(e){
     return false;
   }
+}
+
+
+function formatDuration(ms){
+  const totalSeconds = Math.floor(ms / 1000);
+  const mins = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+  const secs = (totalSeconds % 60).toString().padStart(2, '0');
+  return `${mins}:${secs}`;
+}
+
+function updateRunStatsUI(){
+  const moveEl = document.getElementById('moveCountStat');
+  const timeEl = document.getElementById('elapsedTimeStat');
+  const undoEl = document.getElementById('undoCountStat');
+  if(moveEl) moveEl.textContent = `Moves: ${moveCount}`;
+  if(timeEl) timeEl.textContent = `Time: ${formatDuration(elapsedMs)}`;
+  if(undoEl) undoEl.textContent = `Undos: ${undoCount}`;
+}
+
+function startTimer(){
+  if(timerInterval) clearInterval(timerInterval);
+  lastTickTs = Date.now();
+  timerInterval = setInterval(() => {
+    if(gameFinished) return;
+    const now = Date.now();
+    elapsedMs += now - lastTickTs;
+    lastTickTs = now;
+    updateRunStatsUI();
+    persistGameState();
+  }, 1000);
+}
+
+function resetRunStats(){
+  moveCount = 0;
+  undoCount = 0;
+  elapsedMs = 0;
+  gameFinished = false;
+  lastTickTs = Date.now();
+  updateRunStatsUI();
+}
+
+function loadStatsHistory(){
+  try {
+    const parsed = JSON.parse(localStorage.getItem(STATS_HISTORY_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch(e){
+    return [];
+  }
+}
+
+function saveStatsHistory(history){
+  try {
+    localStorage.setItem(STATS_HISTORY_KEY, JSON.stringify(history.slice(-MAX_STATS_HISTORY)));
+  } catch(e) {}
+}
+
+function recordGameResult(outcome){
+  if(gameFinished) return;
+  gameFinished = true;
+  const history = loadStatsHistory();
+  history.push({ outcome, moveCount, undoCount, elapsedMs, finishedAt: Date.now() });
+  saveStatsHistory(history);
+  persistGameState();
+  renderStatsModal();
+}
+
+function computeStats(history){
+  const totalGames = history.length;
+  const wins = history.filter(g => g.outcome === 'win');
+  const winRate = totalGames ? (wins.length / totalGames) * 100 : 0;
+
+  let currentStreak = 0;
+  for(let i=history.length - 1; i>=0; i--){
+    if(history[i].outcome !== 'win') break;
+    currentStreak++;
+  }
+
+  let bestStreak = 0;
+  let running = 0;
+  for(const game of history){
+    if(game.outcome === 'win'){
+      running++;
+      if(running > bestStreak) bestStreak = running;
+    } else {
+      running = 0;
+    }
+  }
+
+  const avgMovesOnWins = wins.length ? Math.round(wins.reduce((sum, g) => sum + g.moveCount, 0) / wins.length) : 0;
+  const avgTimeOnWins = wins.length ? Math.round(wins.reduce((sum, g) => sum + g.elapsedMs, 0) / wins.length) : 0;
+
+  return { totalGames, winRate, currentStreak, bestStreak, avgMovesOnWins, avgTimeOnWins };
+}
+
+function renderStatsModal(){
+  const grid = document.getElementById('statsGrid');
+  if(!grid) return;
+  const stats = computeStats(loadStatsHistory());
+  grid.innerHTML = `
+    <span>Total games</span><strong>${stats.totalGames}</strong>
+    <span>Win rate</span><strong>${stats.winRate.toFixed(1)}%</strong>
+    <span>Current streak</span><strong>${stats.currentStreak}</strong>
+    <span>Best streak</span><strong>${stats.bestStreak}</strong>
+    <span>Avg moves (wins)</span><strong>${stats.avgMovesOnWins}</strong>
+    <span>Avg time (wins)</span><strong>${formatDuration(stats.avgTimeOnWins)}</strong>
+  `;
 }
 
 function makeDeck(){
@@ -635,7 +799,9 @@ function undo(){
     foundations = prev.foundations;
     hand = prev.hand;
     selected = null;
+    undoCount++;
     persistGameState();
+    updateRunStatsUI();
     fit(); render();
   }
 }
@@ -643,6 +809,7 @@ function undo(){
 function start(){
   closeModals();
   tableau=[[],[],[],[],[],[],[]]; foundations=[[],[],[],[]]; hand=[null,null,null]; historyStack=[]; selected=null;
+  resetRunStats();
   const deck=makeDeck(); shuffle(deck);
   for(let i=0;i<7;i++){
     for(let d=0;d<i;d++){const c=deck.pop();c.faceUp=false;tableau[i].push(c);}
@@ -650,6 +817,7 @@ function start(){
   }
   for(let k=0;k<3;k++) hand[k]=deck.pop();
   persistGameState();
+  startTimer();
   fit();
   render();
 }
@@ -673,6 +841,7 @@ function executePileToPile(srcI, j, destI){
   }
 
   save();
+  moveCount++;
   tableau[srcI] = tableau[srcI].slice(0, j);
   destPile.push(...moving);
   flipTop(srcI);
@@ -686,6 +855,7 @@ function executeHandToPile(handIdx, destI){
   if(!destPile.length){ if(c.rank!=="K") return false; }
   else { if(!canTableau(c, destPile[destPile.length-1])) return false; }
   save();
+  moveCount++;
   hand[handIdx]=null;
   destPile.push(c);
   persistGameState();
@@ -696,6 +866,7 @@ function tryFoundation(c, srcType, srcIdx, cardIdx){
   for(let f=0; f<4; f++){
     if(canFoundation(c, foundations[f])){
       save();
+      moveCount++;
       foundations[f].push(c);
       if(srcType==="pile") { tableau[srcIdx].pop(); flipTop(srcIdx); }
       else if(srcType==="hand") { hand[srcIdx]=null; }
@@ -711,6 +882,7 @@ function executePileToHand(srcI, handIdx){
   const p = tableau[srcI];
   if(!p.length) return false;
   save();
+  moveCount++;
   hand[handIdx] = p.pop();
   flipTop(srcI);
   persistGameState();
@@ -755,14 +927,20 @@ function showHint(){
   alert("No suggestions found.");
 }
 
+function canFinalizeLoss(){
+  return historyStack.length === 0;
+}
+
 /* --- GAME STATE CHECKS --- */
 function checkGameState(){
   if(isWin()){
     celebrate();
+    recordGameResult('win');
     document.getElementById('modalWin').classList.add('active');
   } else {
     // Check for loss (no moves possible)
     if(!findAnyMove(false)){
+      if(canFinalizeLoss()) recordGameResult('loss');
       document.getElementById('modalLose').classList.add('active');
     }
   }
@@ -992,7 +1170,7 @@ function commitMove(targetType, targetIdx){
        c = tableau[dragSource.idx][dragSource.cardIdx];
      } else c = hand[dragSource.idx];
      if(canFoundation(c, foundations[targetIdx])){
-        save(); foundations[targetIdx].push(c);
+        save(); moveCount++; foundations[targetIdx].push(c);
         if(dragSource.type==='pile'){ tableau[dragSource.idx].pop(); flipTop(dragSource.idx); }
         else hand[dragSource.idx]=null;
         persistGameState();
@@ -1015,7 +1193,7 @@ function cardClick(type, idx, cardIdx){
          c = hand[selected.idx];
        }
        if(canFoundation(c, foundations[idx])){
-         save(); foundations[idx].push(c);
+         save(); moveCount++; foundations[idx].push(c);
          if(selected.type==='pile'){ tableau[selected.idx].pop(); flipTop(selected.idx); }
          else hand[selected.idx]=null;
          persistGameState();
@@ -1072,6 +1250,7 @@ function createCardEl(c, type, idx, cardIdx){
 }
 
 function render(){
+  updateRunStatsUI();
   const computedStyle = getComputedStyle(document.documentElement);
   let gapStr = computedStyle.getPropertyValue('--stack-gap').trim();
   let gap = parseInt(gapStr); if(isNaN(gap)) gap = 24;
@@ -1182,7 +1361,19 @@ function scheduleFit(){
 document.getElementById("newGameBtn").onclick = start;
 document.getElementById("undoBtn").onclick = undo;
 document.getElementById("autoBtn").onclick = autoPlay;
-document.getElementById("giveUpBtn").onclick = () => { document.getElementById('modalLose').classList.add('active'); };
+document.getElementById("giveUpBtn").onclick = () => {
+  if(canFinalizeLoss()) recordGameResult('loss');
+  document.getElementById('modalLose').classList.add('active');
+};
+document.getElementById("statsBtn").onclick = () => {
+  renderStatsModal();
+  document.getElementById('modalStats').classList.add('active');
+};
+document.getElementById("closeStatsBtn").onclick = () => document.getElementById('modalStats').classList.remove('active');
+document.getElementById("resetStatsBtn").onclick = () => {
+  saveStatsHistory([]);
+  renderStatsModal();
+};
 window.addEventListener('resize', scheduleFit, {passive:true});
 window.addEventListener('orientationchange', scheduleFit, {passive:true});
 if(window.visualViewport){
@@ -1196,11 +1387,13 @@ try {
 } catch(e) {}
 
 if(loadPersistedGameState()){
+  startTimer();
   fit();
   render();
 } else {
   start();
 }
+renderStatsModal();
 
 initSuitStyleUI();
 renderAppVersion();
