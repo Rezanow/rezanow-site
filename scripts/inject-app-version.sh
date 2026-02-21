@@ -32,7 +32,7 @@ short_sha="${commit_sha:0:7}"
 
 resolved_version="${version_base}+${short_sha} (${build_date})"
 
-if ! rg -q "$PLACEHOLDER" "$TARGET_FILE"; then
+if ! grep -q "$PLACEHOLDER" "$TARGET_FILE"; then
   echo "Placeholder '$PLACEHOLDER' not found in $TARGET_FILE" >&2
   exit 1
 fi
