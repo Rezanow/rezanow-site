@@ -55,7 +55,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          APP_VERSION="$(scripts/inject-app-version.sh index.html resolve-only)"
+
+          APP_VERSION_TAG=""
+          if [[ "${{ needs.release.outputs.release_created }}" == "true" && -n "${{ needs.release.outputs.tag_name }}" ]]; then
+            APP_VERSION_TAG="${{ needs.release.outputs.tag_name }}"
+          fi
+
+          APP_VERSION="$(APP_VERSION_TAG="$APP_VERSION_TAG" scripts/inject-app-version.sh index.html resolve-only)"
 
           echo "app_version=${APP_VERSION}" >> "$GITHUB_OUTPUT"
           echo "Resolved APP_VERSION=${APP_VERSION}"

@@ -10,6 +10,11 @@ resolve_version() {
   local commit_sha
   local short_sha
 
+  if [[ -n "${APP_VERSION_TAG:-}" ]]; then
+    printf '%s\n' "${APP_VERSION_TAG}"
+    return
+  fi
+
   if [[ -n "${GITHUB_REF_TYPE:-}" && "${GITHUB_REF_TYPE}" == "tag" && -n "${GITHUB_REF_NAME:-}" ]]; then
     version_base="${GITHUB_REF_NAME}"
     printf '%s\n' "${version_base}"
