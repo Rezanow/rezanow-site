@@ -62,6 +62,10 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Ensure tags are available
+        shell: bash
+        run: git fetch --force --tags
+
       - name: Resolve version string for footer injection
         id: version
         shell: bash
@@ -86,7 +90,16 @@ jobs:
           set -euo pipefail
           mkdir -p build
           cp index.html build/index.html
-          scripts/inject-app-version.sh build/index.html
+          scripts/inject-app-version.sh build/index.html inject
+
+      - name: Assert build artifact is version-injected
+        shell: bash
+        run: |
+          set -euo pipefail
+          if rg -n "__APP_VERSION__" build/index.html; then
+            echo "::error::Version placeholder __APP_VERSION__ still present in build artifact"
+            exit 1
+          fi
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4

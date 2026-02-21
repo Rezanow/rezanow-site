@@ -29,6 +29,9 @@ resolve_version() {
 
   version_base="$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)"
   if [[ -z "${version_base}" ]]; then
+    version_base="$(git describe --tags --abbrev=0 --match '[0-9]*' 2>/dev/null || true)"
+  fi
+  if [[ -z "${version_base}" ]]; then
     version_base="v0.0.0"
   fi
 
