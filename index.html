@@ -452,6 +452,13 @@ header .controls > *{ flex: 0 0 auto; }
     pointer-events: auto;
     transition-delay: 0s;
   }
+  header h1{ flex: 1 1 120px; font-size: 14px; margin-right: 6px; }
+  #menuToggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  header .controls{ flex: 1 1 100%; }
   header .controls button,
   header .controls select{
     height: 28px;
@@ -1545,6 +1552,7 @@ renderStatsModal();
 initSuitStyleUI();
 initDoubleClickFoundationUI();
 renderAppVersion();
+
 const headerEl = document.querySelector('header');
 const menuToggleBtn = document.getElementById('menuToggle');
 const headerControlsEl = document.getElementById('headerControls');
