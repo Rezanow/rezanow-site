@@ -43,6 +43,15 @@
     header h1 { margin: 0; font-weight: 700; font-size: 16px; letter-spacing: 0.5px;}
 
     .controls { display:flex; gap:8px; }
+    #menuToggle {
+      display: none;
+      background: #e0e0e0;
+      color: #222;
+      min-width: 40px;
+      padding: 6px 10px;
+      font-size: 18px;
+      line-height: 1;
+    }
     button {
       border: none; border-radius: 4px; padding: 6px 12px; 
       font-weight: 600; font-size: 12px; cursor: pointer;
@@ -52,6 +61,14 @@
     button#autoBtn { background: #ffda2b; color: #000; }
     button#hintBtn { background: #e1bee7; color: #4a148c; }
     button#giveUpBtn { background: #ef9a9a; color: #b71c1c; }
+
+    #menuToggle:focus-visible,
+    .controls button:focus-visible,
+    .controls select:focus-visible,
+    .controls input:focus-visible {
+      outline: 3px solid #ffda2b;
+      outline-offset: 2px;
+    }
 
     .app {
       flex: 1 1 auto;
@@ -436,6 +453,16 @@ header .controls > *{ flex: 0 0 auto; }
     pointer-events: auto;
     transition-delay: 0s;
   }
+  header h1{ flex: 1 1 120px; font-size: 14px; margin-right: 6px; }
+  #menuToggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  header .controls{ flex: 1 1 100%; }
+  header[data-menu-open="false"] .controls {
+    display: none;
+  }
   header .controls button,
   header .controls select{
     height: 28px;
@@ -500,6 +527,10 @@ header .controls > *{ flex: 0 0 auto; }
 </style>
 </head>
 <body class="suit-style-normal">
+  <header data-menu-open="true">
+    <h1>Build-By-Suit Solitaire</h1>
+    <button id="menuToggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="controlsPanel">☰</button>
+    <div class="controls" id="controlsPanel">
   <header>
     <div class="header-main">
       <h1>Build-By-Suit Solitaire</h1>
@@ -1529,6 +1560,43 @@ renderStatsModal();
 initSuitStyleUI();
 initDoubleClickFoundationUI();
 renderAppVersion();
+initMenuToggle();
+
+function initMenuToggle(){
+  const header = document.querySelector('header');
+  const menuToggle = document.getElementById('menuToggle');
+  if(!header || !menuToggle) return;
+
+  const mobileQuery = window.matchMedia('(max-width: 520px)');
+
+  function setMenuState(isOpen){
+    header.dataset.menuOpen = String(isOpen);
+    menuToggle.setAttribute('aria-expanded', String(isOpen));
+    menuToggle.setAttribute('aria-label', isOpen ? 'Close menu' : 'Open menu');
+  }
+
+  function syncWithViewport(){
+    setMenuState(!mobileQuery.matches);
+  }
+
+  menuToggle.addEventListener('click', () => {
+    const isOpen = menuToggle.getAttribute('aria-expanded') === 'true';
+    setMenuState(!isOpen);
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if(event.key !== 'Escape') return;
+    const isMobile = mobileQuery.matches;
+    const isOpen = menuToggle.getAttribute('aria-expanded') === 'true';
+    if(isMobile && isOpen){
+      setMenuState(false);
+      menuToggle.focus();
+    }
+  });
+
+  mobileQuery.addEventListener('change', syncWithViewport);
+  syncWithViewport();
+}
 
 const headerEl = document.querySelector('header');
 const menuToggleBtn = document.getElementById('menuToggle');
