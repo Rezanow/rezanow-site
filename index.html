@@ -57,8 +57,23 @@
       min-height: 0;
  
       display: flex; flex-direction: column; 
-      padding: 8px calc(4px + var(--safe-right)) calc(8px + var(--safe-bottom)) calc(4px + var(--safe-left));
+      padding: 8px calc(4px + var(--safe-right)) calc(28px + var(--safe-bottom)) calc(4px + var(--safe-left));
 width: 100%;
+    }
+
+    .app-version {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 2px calc(8px + var(--safe-right)) calc(2px + var(--safe-bottom)) calc(8px + var(--safe-left));
+      font-size: 11px;
+      line-height: 1.2;
+      opacity: 0.65;
+      text-align: center;
+      pointer-events: none;
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.24), rgba(0, 0, 0, 0));
+      z-index: 20;
     }
     
     .top-section { 
@@ -477,6 +492,8 @@ header .controls > *{ flex: 0 0 auto; }
     </div>
   </div>
 
+  <footer class="app-version">Version <span id="appVersion"></span></footer>
+
   <div id="drag-ghost"></div>
 
   <div id="modalWin" class="modal-overlay">
@@ -509,6 +526,7 @@ const suitClass = { "♠":"spades", "♥":"hearts", "♦":"diamonds", "♣":"clu
 
 const SUIT_STYLE_KEY = "rs_suitStyle_v1";
 const GAME_STATE_KEY = "rs_gameState_v1";
+const APP_VERSION = "v1.0.0 (local, 2026-02-21)";
 
 function applySuitStyle(style){
   const clsPrefix = "suit-style-";
@@ -539,6 +557,11 @@ function initSuitStyleUI(){
     sel.addEventListener("change", () => applySuitStyle(sel.value));
   }
   loadSuitStyle();
+}
+
+function renderAppVersion(){
+  const versionEl = document.getElementById("appVersion");
+  if(versionEl) versionEl.textContent = APP_VERSION;
 }
 
 
@@ -1179,6 +1202,7 @@ if(loadPersistedGameState()){
 }
 
 initSuitStyleUI();
+renderAppVersion();
 
 // Rules modal behavior
 document.addEventListener('DOMContentLoaded', () => {
