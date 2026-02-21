@@ -375,9 +375,18 @@ width: 100%;
     body.suit-style-cb .val-tl, body.suit-style-cb .suit-tr{ text-shadow: 0 1px 1px rgba(0,0,0,0.35); }
 
   
-/* --- Mobile QoL: header wrap + safe width --- */
-header{ flex-wrap: nowrap; }
+/* --- Responsive header + mobile menu --- */
+header{
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+header .header-main{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 header .controls{
+  display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-start;
@@ -385,14 +394,45 @@ header .controls{
   min-width: 0;
 }
 header .controls > *{ flex: 0 0 auto; }
+
+#menuToggle{
+  display: none;
+  min-width: 34px;
+  height: 30px;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+}
+
 @media (max-width: 520px){
   header{
     flex-wrap: wrap;
+    align-items: flex-start;
     row-gap: 6px;
-    padding: calc(6px + env(safe-area-inset-top)) 8px 6px;
+    padding: calc(6px + var(--safe-top)) calc(8px + var(--safe-right)) 6px calc(8px + var(--safe-left));
   }
-  header h1{ flex: 1 1 120px; font-size: 14px; margin-right: 6px; }
-  header .controls{ flex: 1 1 100%; }
+  header .header-main{
+    width: 100%;
+    justify-content: space-between;
+  }
+  header h1{ font-size: 14px; margin-right: 6px; }
+  #menuToggle{ display: inline-flex; align-items: center; justify-content: center; }
+
+  header .controls{
+    flex: 1 1 100%;
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(-4px);
+    pointer-events: none;
+    transition: max-height 0.2s ease, opacity 0.2s ease, transform 0.2s ease;
+  }
+  header.menu-open .controls{
+    max-height: 260px;
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
   header .controls button,
   header .controls select{
     height: 28px;
@@ -458,8 +498,11 @@ header .controls > *{ flex: 0 0 auto; }
 </head>
 <body class="suit-style-normal">
   <header>
-    <h1>Build-By-Suit Solitaire</h1>
-    <div class="controls">
+    <div class="header-main">
+      <h1>Build-By-Suit Solitaire</h1>
+      <button id="menuToggle" type="button" aria-label="Toggle controls menu" aria-expanded="false" aria-controls="headerControls">☰</button>
+    </div>
+    <div class="controls" id="headerControls">
       <button id="hintBtn" onclick="showHint()">Hint</button>
       
       <label class="suit-style-label" for="suitStyleSelect">Suit Style:</label>
@@ -1483,6 +1526,41 @@ renderStatsModal();
 initSuitStyleUI();
 initDoubleClickFoundationUI();
 renderAppVersion();
+
+const headerEl = document.querySelector('header');
+const menuToggleBtn = document.getElementById('menuToggle');
+const headerControlsEl = document.getElementById('headerControls');
+const mobileMenuQuery = window.matchMedia('(max-width: 520px)');
+
+function setMenuOpen(isOpen){
+  if(!headerEl || !menuToggleBtn || !headerControlsEl) return;
+  headerEl.classList.toggle('menu-open', isOpen);
+  menuToggleBtn.setAttribute('aria-expanded', String(isOpen));
+}
+
+if(menuToggleBtn){
+  menuToggleBtn.addEventListener('click', () => {
+    setMenuOpen(!headerEl.classList.contains('menu-open'));
+    scheduleFit();
+  });
+}
+
+['newGameBtn', 'undoBtn', 'autoBtn', 'hintBtn', 'giveUpBtn'].forEach((id) => {
+  const actionBtn = document.getElementById(id);
+  if(!actionBtn) return;
+  actionBtn.addEventListener('click', () => {
+    if(mobileMenuQuery.matches){
+      setMenuOpen(false);
+      scheduleFit();
+    }
+  });
+});
+
+window.addEventListener('resize', () => {
+  if(!mobileMenuQuery.matches){
+    setMenuOpen(false);
+  }
+});
 
 // Rules modal behavior
 document.addEventListener('DOMContentLoaded', () => {
