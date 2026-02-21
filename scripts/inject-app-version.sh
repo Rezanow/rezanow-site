@@ -6,6 +6,10 @@ MODE="${2:-inject}"
 PLACEHOLDER="__APP_VERSION__"
 
 resolve_version() {
+  # Precedence:
+  # 1) APP_VERSION_TAG (explicit override)
+  # 2) GitHub tag refs from workflow context (release tags)
+  # 3) Derived development fallback from latest reachable tag + short SHA
   local version_base
   local commit_sha
   local short_sha
@@ -30,9 +34,12 @@ resolve_version() {
   version_base="$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)"
   if [[ -z "${version_base}" ]]; then
     version_base="$(git describe --tags --abbrev=0 --match '[0-9]*' 2>/dev/null || true)"
+    if [[ -n "${version_base}" ]]; then
+      version_base="v${version_base}"
+    fi
   fi
   if [[ -z "${version_base}" ]]; then
-    version_base="v0.1.0"
+    version_base="v0.0.0"
   fi
 
   if [[ -n "${GITHUB_SHA:-}" ]]; then
