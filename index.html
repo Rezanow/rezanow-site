@@ -548,60 +548,6 @@ let hand=[null,null,null];
 let historyStack=[];
 let selected=null;
 
-
-
-const PERSIST_KEY = "bbs_solitaire_state_v1";
-const PERSIST_MAX_HISTORY = 2500; // safety cap
-
-function persistNow(){
-  try{
-    if(Array.isArray(historyStack) && historyStack.length > PERSIST_MAX_HISTORY){
-      // keep earliest + most recent
-      historyStack = [historyStack[0], ...historyStack.slice(-(PERSIST_MAX_HISTORY-1))];
-    }
-    const payload = { v: 1, t: Date.now(), tableau, foundations, hand, historyStack };
-    localStorage.setItem(PERSIST_KEY, JSON.stringify(payload));
-  } catch(e) {}
-}
-
-function persistClear(){
-  try{ localStorage.removeItem(PERSIST_KEY); } catch(e) {}
-}
-
-function persistLoad(){
-  try{
-    const raw = localStorage.getItem(PERSIST_KEY);
-    if(!raw) return false;
-    const data = JSON.parse(raw);
-    if(!data || data.v !== 1) return false;
-    if(!Array.isArray(data.tableau) || data.tableau.length !== 7) return false;
-    if(!Array.isArray(data.foundations) || data.foundations.length !== 4) return false;
-    if(!Array.isArray(data.hand) || data.hand.length !== 3) return false;
-    if(!Array.isArray(data.historyStack)) return false;
-
-    tableau = data.tableau;
-    foundations = data.foundations;
-    hand = data.hand;
-    historyStack = data.historyStack;
-    selected = null;
-    closeModals();
-    clearHints();
-    return true;
-  } catch(e){
-    return false;
-  }
-}
-
-function boot(){
-  if(!persistLoad()){
-    start();        // start() will persist the fresh deal
-  } else {
-    fit();
-    render();
-  persistNow();
-}
-}
-
 function makeDeck(){
   const d=[]; for(const s of suits){ for(let r=0;r<ranks.length;r++){ d.push({suit:s,rank:ranks[r],value:r+1,faceUp:true}); } }
   return d;
@@ -624,13 +570,10 @@ function undo(){
     hand = prev.hand;
     selected = null;
     fit(); render();
-  persistNow();
   }
-}
 }
 
 function start(){
-  persistClear();
   closeModals();
   tableau=[[],[],[],[],[],[],[]]; foundations=[[],[],[],[]]; hand=[null,null,null]; historyStack=[]; selected=null;
   const deck=makeDeck(); shuffle(deck);
@@ -724,7 +667,6 @@ function autoPlay(){
     }
   }
   if(loops>0) render();
-  persistNow();
   checkGameState();
 }
 
@@ -983,7 +925,7 @@ function commitMove(targetType, targetIdx){
         success = true;
      }
   }
-  if(success) { render(); persistNow(); checkGameState(); } else render();
+  if(success) { render(); checkGameState(); } else render();
 }
 
 function cardClick(type, idx, cardIdx){
@@ -1013,7 +955,7 @@ function cardClick(type, idx, cardIdx){
          success=executePileToHand(selected.idx, idx);
     }
     
-    if(success) { selected=null; render(); persistNow(); checkGameState(); return; }
+    if(success) { selected=null; render(); checkGameState(); return; }
     else {
         if(type==='pile' && !tableau[idx][cardIdx].faceUp){ selected=null; render(); return; }
     }
@@ -1178,7 +1120,7 @@ try {
   ro.observe(document.body);
 } catch(e) {}
 
-boot();
+start();
 
 initSuitStyleUI();
 
