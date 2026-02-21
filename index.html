@@ -526,7 +526,7 @@ header .controls > *{ flex: 0 0 auto; }
   <header>
     <div class="header-main">
       <h1>Build-By-Suit Solitaire</h1>
-      <button id="menuToggle" type="button" aria-label="Toggle controls menu" aria-expanded="false" aria-controls="headerControls">☰</button>
+      <button id="menuToggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="headerControls">☰</button>
     </div>
     <div class="controls" id="headerControls">
       <button id="hintBtn" onclick="showHint()">Hint</button>
@@ -1559,33 +1559,41 @@ const headerControlsEl = document.getElementById('headerControls');
 const mobileMenuQuery = window.matchMedia('(max-width: 520px)');
 
 function syncMenuAccessibility(){
-  if(!headerControlsEl) return;
-  const shouldHideControls = mobileMenuQuery.matches && !headerEl.classList.contains('menu-open');
+  if(!headerEl || !menuToggleBtn || !headerControlsEl) return;
+  const isOpen = headerEl.classList.contains('menu-open');
+  const shouldHideControls = mobileMenuQuery.matches && !isOpen;
   headerControlsEl.toggleAttribute('inert', shouldHideControls);
   headerControlsEl.setAttribute('aria-hidden', String(shouldHideControls));
+  menuToggleBtn.setAttribute('aria-expanded', String(isOpen));
+  menuToggleBtn.setAttribute('aria-label', isOpen ? 'Close menu' : 'Open menu');
 }
 
 function setMenuOpen(isOpen){
   if(!headerEl || !menuToggleBtn || !headerControlsEl) return;
+  const wasOpen = headerEl.classList.contains('menu-open');
   headerEl.classList.toggle('menu-open', isOpen);
-  menuToggleBtn.setAttribute('aria-expanded', String(isOpen));
   syncMenuAccessibility();
+  if(wasOpen !== isOpen){
+    scheduleFit();
+  }
 }
 
 function syncMenuForViewport(){
-  if(!mobileMenuQuery.matches){
-    headerEl.classList.remove('menu-open');
-    menuToggleBtn.setAttribute('aria-expanded', 'false');
-  }
-  syncMenuAccessibility();
+  if(!headerEl || !menuToggleBtn || !headerControlsEl) return;
+  setMenuOpen(!mobileMenuQuery.matches);
 }
 
 if(menuToggleBtn){
   menuToggleBtn.addEventListener('click', () => {
     setMenuOpen(!headerEl.classList.contains('menu-open'));
-    scheduleFit();
   });
 }
+
+document.addEventListener('keydown', (event) => {
+  if(event.key !== 'Escape' || !mobileMenuQuery.matches || !headerEl?.classList.contains('menu-open')) return;
+  setMenuOpen(false);
+  menuToggleBtn?.focus();
+});
 
 ['newGameBtn', 'undoBtn', 'autoBtn', 'hintBtn', 'giveUpBtn'].forEach((id) => {
   const actionBtn = document.getElementById(id);
@@ -1593,19 +1601,12 @@ if(menuToggleBtn){
   actionBtn.addEventListener('click', () => {
     if(mobileMenuQuery.matches){
       setMenuOpen(false);
-      scheduleFit();
     }
   });
 });
 
 syncMenuForViewport();
-
-window.addEventListener('resize', () => {
-  syncMenuForViewport();
-});
-if(mobileMenuQuery.addEventListener){
-  mobileMenuQuery.addEventListener('change', syncMenuForViewport);
-}
+mobileMenuQuery.addEventListener('change', syncMenuForViewport);
 
 // Rules modal behavior
 document.addEventListener('DOMContentLoaded', () => {
