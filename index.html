@@ -563,7 +563,7 @@ function persistGameState(){
   // Browsers have strict localStorage quotas; if persistence fails, trim
   // history snapshots and retry so current progress is never dropped.
   for(let keep = persistedHistory.length; keep >= 0; keep--){
-    snapshot.historyStack = persistedHistory.slice(-keep);
+    snapshot.historyStack = keep === 0 ? [] : persistedHistory.slice(-keep);
     try {
       localStorage.setItem(GAME_STATE_KEY, JSON.stringify(snapshot));
       return;
