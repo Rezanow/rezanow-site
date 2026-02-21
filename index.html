@@ -459,9 +459,6 @@ header .controls > *{ flex: 0 0 auto; }
     justify-content: center;
   }
   header .controls{ flex: 1 1 100%; }
-  header[data-menu-open="false"] .controls {
-    display: none;
-  }
   header .controls button,
   header .controls select{
     height: 28px;
@@ -526,10 +523,6 @@ header .controls > *{ flex: 0 0 auto; }
 </style>
 </head>
 <body class="suit-style-normal">
-  <header data-menu-open="true">
-    <h1>Build-By-Suit Solitaire</h1>
-    <button id="menuToggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="controlsPanel">☰</button>
-    <div class="controls" id="controlsPanel">
   <header>
     <div class="header-main">
       <h1>Build-By-Suit Solitaire</h1>
@@ -1559,43 +1552,6 @@ renderStatsModal();
 initSuitStyleUI();
 initDoubleClickFoundationUI();
 renderAppVersion();
-initMenuToggle();
-
-function initMenuToggle(){
-  const header = document.querySelector('header');
-  const menuToggle = document.getElementById('menuToggle');
-  if(!header || !menuToggle) return;
-
-  const mobileQuery = window.matchMedia('(max-width: 520px)');
-
-  function setMenuState(isOpen){
-    header.dataset.menuOpen = String(isOpen);
-    menuToggle.setAttribute('aria-expanded', String(isOpen));
-    menuToggle.setAttribute('aria-label', isOpen ? 'Close menu' : 'Open menu');
-  }
-
-  function syncWithViewport(){
-    setMenuState(!mobileQuery.matches);
-  }
-
-  menuToggle.addEventListener('click', () => {
-    const isOpen = menuToggle.getAttribute('aria-expanded') === 'true';
-    setMenuState(!isOpen);
-  });
-
-  document.addEventListener('keydown', (event) => {
-    if(event.key !== 'Escape') return;
-    const isMobile = mobileQuery.matches;
-    const isOpen = menuToggle.getAttribute('aria-expanded') === 'true';
-    if(isMobile && isOpen){
-      setMenuState(false);
-      menuToggle.focus();
-    }
-  });
-
-  mobileQuery.addEventListener('change', syncWithViewport);
-  syncWithViewport();
-}
 
 const headerEl = document.querySelector('header');
 const menuToggleBtn = document.getElementById('menuToggle');
