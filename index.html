@@ -549,14 +549,26 @@ let hand=[null,null,null];
 let historyStack=[];
 let selected=null;
 
+const MAX_PERSISTED_HISTORY = 150;
+
 function persistGameState(){
+  const persistedHistory = historyStack.slice(-MAX_PERSISTED_HISTORY);
   const snapshot = {
     tableau,
     foundations,
     hand,
-    historyStack
+    historyStack: persistedHistory
   };
-  try { localStorage.setItem(GAME_STATE_KEY, JSON.stringify(snapshot)); } catch(e) {}
+
+  // Browsers have strict localStorage quotas; if persistence fails, trim
+  // history snapshots and retry so current progress is never dropped.
+  for(let keep = persistedHistory.length; keep >= 0; keep--){
+    snapshot.historyStack = keep === 0 ? [] : persistedHistory.slice(-keep);
+    try {
+      localStorage.setItem(GAME_STATE_KEY, JSON.stringify(snapshot));
+      return;
+    } catch(e) {}
+  }
 }
 
 function loadPersistedGameState(){
