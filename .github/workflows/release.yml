@@ -62,7 +62,7 @@ jobs:
           else
             BASE_TAG="$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)"
             if [[ -z "$BASE_TAG" ]]; then
-              BASE_TAG="v0.0.0"
+              BASE_TAG="v0.1.0"
             fi
             APP_VERSION="${BASE_TAG}-dev+${SHORT_SHA}"
           fi
