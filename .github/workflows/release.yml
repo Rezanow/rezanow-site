@@ -55,17 +55,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          SHORT_SHA="${GITHUB_SHA::7}"
-
-          if [[ "${GITHUB_REF}" == "refs/heads/main" && "${{ needs.release.outputs.release_created }}" == "true" && -n "${{ needs.release.outputs.tag_name }}" ]]; then
-            APP_VERSION="${{ needs.release.outputs.tag_name }}"
-          else
-            BASE_TAG="$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)"
-            if [[ -z "$BASE_TAG" ]]; then
-              BASE_TAG="v0.1.0"
-            fi
-            APP_VERSION="${BASE_TAG}-dev+${SHORT_SHA}"
-          fi
+          APP_VERSION="$(scripts/inject-app-version.sh index.html resolve-only)"
 
           echo "app_version=${APP_VERSION}" >> "$GITHUB_OUTPUT"
           echo "Resolved APP_VERSION=${APP_VERSION}"
@@ -76,7 +66,7 @@ jobs:
           set -euo pipefail
           mkdir -p build
           cp index.html build/index.html
-          sed -i "s|__APP_VERSION__|${{ steps.version.outputs.app_version }}|g" build/index.html
+          scripts/inject-app-version.sh build/index.html
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4

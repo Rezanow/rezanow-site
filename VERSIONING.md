@@ -68,4 +68,4 @@ For branches that are not configured for official releases, CI injects a develop
 vX.Y.Z-dev+<shortsha>
 ```
 
-Where `X.Y.Z` is derived from the latest reachable tag (or baseline `0.1.0` when no tag exists yet in checkout scope), and `<shortsha>` is the current short commit SHA.
+Where `X.Y.Z` is derived from the latest reachable `v*` tag (or baseline `0.0.0` only when no matching tag exists in checkout scope), and `<shortsha>` is the current short commit SHA.
