@@ -842,6 +842,7 @@ function undo(){
 }
 
 function start(){
+  if(hasActiveRunToRecordAsLoss()) recordGameResult('loss');
   closeModals();
   tableau=[[],[],[],[],[],[],[]]; foundations=[[],[],[],[]]; hand=[null,null,null]; historyStack=[]; selected=null;
   resetRunStats();
@@ -936,6 +937,13 @@ function moveCardToAnyFoundation(type, idx, cardIdx){
     return tryFoundation(c, 'hand', idx);
   }
   return false;
+}
+
+function hasActiveRunToRecordAsLoss(){
+  if(gameFinished) return false;
+  if(moveCount > 0 || undoCount > 0 || elapsedMs > 0) return true;
+  if(historyStack.length > 0) return true;
+  return foundations.some(p => p.length > 0);
 }
 
 function flipTop(i){
@@ -1122,6 +1130,8 @@ let touchClone = document.getElementById('drag-ghost');
 let touchStartCoords = {x:0, y:0};
 let isDragGesture = false;
 let touchOriginalEl = null;
+let lastTap = { ts: 0, type: null, idx: null, cardIdx: null };
+const DOUBLE_TAP_WINDOW_MS = 300;
 
 function handleDragStart(e, type, idx, cardIdx){
   clearHints();
@@ -1197,7 +1207,23 @@ function handleTouchEnd(e){
     } else render();
   } else {
     e.preventDefault();
-    cardClick(dragSource.type, dragSource.idx, dragSource.cardIdx);
+    const now = Date.now();
+    const isDoubleTap =
+      doubleClickToFoundationEnabled &&
+      lastTap.type === dragSource.type &&
+      lastTap.idx === dragSource.idx &&
+      lastTap.cardIdx === dragSource.cardIdx &&
+      (now - lastTap.ts) <= DOUBLE_TAP_WINDOW_MS;
+
+    if(isDoubleTap && moveCardToAnyFoundation(dragSource.type, dragSource.idx, dragSource.cardIdx)){
+      selected = null;
+      render();
+      checkGameState();
+      lastTap = { ts: 0, type: null, idx: null, cardIdx: null };
+    } else {
+      cardClick(dragSource.type, dragSource.idx, dragSource.cardIdx);
+      lastTap = { ts: now, type: dragSource.type, idx: dragSource.idx, cardIdx: dragSource.cardIdx };
+    }
   }
   dragSource = null;
   isDragGesture = false;
