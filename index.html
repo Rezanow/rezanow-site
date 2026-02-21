@@ -556,16 +556,10 @@ const PERSIST_MAX_HISTORY = 2500; // safety cap
 function persistNow(){
   try{
     if(Array.isArray(historyStack) && historyStack.length > PERSIST_MAX_HISTORY){
+      // keep earliest + most recent
       historyStack = [historyStack[0], ...historyStack.slice(-(PERSIST_MAX_HISTORY-1))];
     }
-    const payload = {
-      v: 1,
-      t: Date.now(),
-      tableau,
-      foundations,
-      hand,
-      historyStack
-    };
+    const payload = { v: 1, t: Date.now(), tableau, foundations, hand, historyStack };
     localStorage.setItem(PERSIST_KEY, JSON.stringify(payload));
   } catch(e) {}
 }
@@ -593,527 +587,20 @@ function persistLoad(){
     closeModals();
     clearHints();
     return true;
-  } catch(e) {
+  } catch(e){
     return false;
   }
 }
 
 function boot(){
   if(!persistLoad()){
-    start();
-    persistNow(); // persist initial deal so refresh       flex-shrink: 0; 
-      display:flex; justify-content:space-between; align-items:center; 
-      padding: calc(6px + var(--safe-top)) calc(12px + var(--safe-right)) 6px calc(12px + var(--safe-left));
-      background: rgba(0,0,0,0.25);
+    start();        // start() will persist the fresh deal
+  } else {
+    fit();
+    render();
+  persistNow();
 }
-    header h1 { margin: 0; font-weight: 700; font-size: 16px; letter-spacing: 0.5px;}
-
-    .controls { display:flex; gap:8px; }
-    button {
-      border: none; border-radius: 4px; padding: 6px 12px; 
-      font-weight: 600; font-size: 12px; cursor: pointer;
-      background: #e0e0e0; color: #333; box-shadow: 0 2px 2px rgba(0,0,0,0.2);
-    }
-    button:active { transform: translateY(1px); }
-    button#autoBtn { background: #ffda2b; color: #000; }
-    button#hintBtn { background: #e1bee7; color: #4a148c; }
-    button#giveUpBtn { background: #ef9a9a; color: #b71c1c; }
-
-    .app {
-      flex: 1 1 auto;
-      min-height: 0;
- 
-      display: flex; flex-direction: column; 
-      padding: 8px calc(4px + var(--safe-right)) calc(8px + var(--safe-bottom)) calc(4px + var(--safe-left));
-width: 100%;
-    }
-    
-    .top-section { 
-      display: flex; justify-content: center; gap: 12px; 
-      margin-bottom: 8px; flex-shrink: 0;
-    }
-    .zone-title { 
-      text-align:center; font-size: 9px; text-transform: uppercase; 
-      opacity: .5; margin-bottom: 2px;
-    }
-
-    .foundations-row, .hand-row { display:flex; gap: 4px; }
-    
-    .zone-tableau {
-        flex-grow: 1; position: relative;
-    }
-
-    .tableau-row { 
-      display:flex; gap: var(--col-gap); justify-content:center; 
-      height: 100%; padding-top: 4px;
-    }
-
-    .pile, .foundation, .hand-slot {
-      width: var(--card-w);
-      min-height: var(--card-h);
-      border: 1px solid rgba(255,255,255,0.2);
-      border-radius: var(--radius);
-      position: relative;
-      background: rgba(0,0,0,0.1);
-      transition: width 0.1s, height 0.1s;
-    }
-    
-    /* Card Styles */
-    .card {
-      position: absolute;
-      width: var(--card-w); height: var(--card-h);
-      border-radius: var(--radius);
-      background: #fdfbf7;
-      box-shadow: 1px 1px 3px rgba(0,0,0,0.4);
-      cursor: grab;
-      border: 1px solid #bbb;
-      z-index: 10;
-      transition: transform 0.1s;
-    }
-    .card:active { transform: scale(0.96); }
-    .card.back {
-      background: repeating-linear-gradient(45deg, #1a237e, #1a237e 5px, #283593 5px, #283593 10px);
-      border: 1px solid #eee;
-    }
-    
-    .val-tl { 
-      position: absolute; top: 4px; left: 6px; 
-      font-size: clamp(14px, calc(var(--card-w) * 0.25), 20px); 
-      font-weight: 700; line-height: 1;
-    }
-    .suit-tr { 
-      position: absolute; top: 4px; right: 6px; 
-      font-size: clamp(14px, calc(var(--card-w) * 0.25), 20px); 
-      line-height: 1;
-    }
-    .val-center { 
-      position: absolute; top: 55%; left: 50%; 
-      transform: translate(-50%, -50%); 
-      font-size: calc(var(--card-w) * 0.7); 
-      font-weight: 800;
-      letter-spacing: -2px;
-      opacity: 1; 
-      pointer-events: none;
-    }
-    
-    .card.dragging { opacity: 0; } 
-    .drag-over { background: rgba(255, 218, 43, 0.4); border-color: #ffda2b; box-shadow: 0 0 8px #ffda2b; }
-    .selected { outline: 3px solid #ffda2b; z-index: 100 !important; }
-
-    @keyframes pulse-pink {
-      0% { box-shadow: 0 0 0 0 rgba(236, 64, 122, 0.7); border-color: #ec407a; }
-      70% { box-shadow: 0 0 0 10px rgba(236, 64, 122, 0); border-color: #ec407a; }
-      100% { box-shadow: 0 0 0 0 rgba(236, 64, 122, 0); border-color: #ec407a; }
-    }
-    .hint-source { animation: pulse-pink 1.5s infinite; z-index: 1000 !important; }
-    .hint-target { border: 2px solid #ec407a; background: rgba(236, 64, 122, 0.2); }
-
-    #drag-ghost {
-      position: fixed; pointer-events: none; z-index: 9999;
-      opacity: 0.95; transform: scale(1.05);
-      box-shadow: 5px 5px 15px rgba(0,0,0,0.5);
-      display: none;
-    }
-
-    /* MODAL STYLES */
-    .modal-overlay {
-      position: fixed; top:0; left:0; width:100%; height:100%;
-      background: rgba(0,0,0,0.6);
-      display: flex; justify-content: center; align-items: center;
-      z-index: 10000;
-      opacity: 0; pointer-events: none; transition: opacity 0.3s;
-    }
-    .modal-overlay.active { opacity: 1; pointer-events: auto; }
-    .modal-box {
-      background: white; color: #333;
-      padding: 30px; border-radius: 12px;
-      text-align: center; max-width: 300px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-    }
-    .modal-box h2 { margin-top: 0; color: #205c36; }
-    .modal-actions { margin-top: 20px; display: flex; gap: 10px; justify-content: center; }
-    .modal-actions button { background: #205c36; color: white; padding: 10px 20px; font-size: 14px; }
-    
-    @media (prefers-reduced-motion: reduce){
-      * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
-      .confetti { display: none !important; }
-    }
-
-    /* Confetti */
-    .confetti {
-      position: absolute; width: 10px; height: 10px;
-      background: #f00;
-      animation: fall linear forwards;
-    }
-    @keyframes fall { to { transform: translateY(100vh) rotate(720deg); } }
-    @supports (height: 100dvh){
-      @keyframes fall { to { transform: translateY(100dvh) rotate(720deg); } }
-    }
-  
-    /* Suit background color accessibility toggle */
-    :root{
-      --suit-bg-spades: #e3f2fd;   /* light blue */
-      --suit-bg-hearts: #ffebee;   /* light red/pink */
-      --suit-bg-diamonds: #fff8e1; /* light amber */
-      --suit-bg-clubs: #e8f5e9;    /* light green */
-    }
-    /* Slightly smaller label on narrow screens */
-    }
-
-  
-/* Suit style control */
-    .suit-style-label{
-      font-size: 12px;
-      font-weight: 700;
-      opacity: .9;
-      align-self: center;
-      margin-left: 2px;
-      margin-right: 2px;
-      white-space: nowrap;
-    }
-    #suitStyleSelect{
-      height: 28px;
-      border-radius: 4px;
-      border: 1px solid rgba(0,0,0,0.25);
-      padding: 0 8px;
-      font-weight: 700;
-      font-size: 12px;
-      background: #e0e0e0;
-      color: #222;
-      box-shadow: 0 2px 2px rgba(0,0,0,0.2);
-      max-width: 160px;
-    }
-    #suitStyleSelect:active{ transform: translateY(1px); }
-
-    @media (max-width: 420px){
-      .suit-style-label{ display:none; }
-      #suitStyleSelect{ max-width: 140px; padding: 0 6px; }
-    }
-
-    /* ==============================
-       Suit Distinction Styles
-       Applies only to face-up cards: .card.face
-       Suit class names: .suit-spades/.suit-hearts/.suit-diamonds/.suit-clubs
-       ============================== */
-    body.suit-style-normal .card.face{ /* baseline */ }
-
-    /* A) Color Background (lighter) */
-    :root{
-      --s-spade: #cfe3ff;
-      --s-heart: #ffd0d0;
-      --s-diamond: #ffe7b8;
-      --s-club: #d6f5df;
-
-      --s-spade-dark: #1f3a5a;
-      --s-heart-dark: #7a0b0b;
-      --s-diamond-dark: #8a5a00;
-      --s-club-dark: #0b4d22;
-
-      --s-spade-cb: #0D47A1;
-      --s-heart-cb: #D32F2F;
-      --s-diamond-cb: #F9A825;
-      --s-club-cb: #00796B;
-    }
-
-    body.suit-style-color .card.face.suit-spades{ background: var(--s-spade); }
-    body.suit-style-color .card.face.suit-hearts{ background: var(--s-heart); }
-    body.suit-style-color .card.face.suit-diamonds{ background: var(--s-diamond); }
-    body.suit-style-color .card.face.suit-clubs{ background: var(--s-club); }
-
-    /* B) Dark Background */
-    body.suit-style-dark .card.face{ color:#fff !important; }
-    body.suit-style-dark .card.face.suit-spades{ background: var(--s-spade-dark); border-color: rgba(255,255,255,.35); }
-    body.suit-style-dark .card.face.suit-hearts{ background: var(--s-heart-dark); border-color: rgba(255,255,255,.35); }
-    body.suit-style-dark .card.face.suit-diamonds{ background: var(--s-diamond-dark); border-color: rgba(255,255,255,.35); }
-    body.suit-style-dark .card.face.suit-clubs{ background: var(--s-club-dark); border-color: rgba(255,255,255,.35); }
-
-    /* C) Color + Border (strong edge cue) */
-    body.suit-style-border .card.face{ border-width: 3px; }
-    body.suit-style-border .card.face.suit-spades{ background: var(--s-spade); border-color: #1f3a5a; }
-    body.suit-style-border .card.face.suit-hearts{ background: var(--s-heart); border-color: #7a0b0b; }
-    body.suit-style-border .card.face.suit-diamonds{ background: var(--s-diamond); border-color: #8a5a00; }
-    body.suit-style-border .card.face.suit-clubs{ background: var(--s-club); border-color: #0b4d22; }
-
-    /* Shared watermark/pattern infrastructure */
-    body.suit-style-watermark .card.face,
-    body.suit-style-pattern .card.face{
-      overflow:hidden;
-    }
-    body.suit-style-watermark .card.face::after,
-    body.suit-style-pattern .card.face::after{
-      content: attr(data-suitglyph);
-      position:absolute;
-      inset: 0;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-size: calc(var(--card-w) * 1.4);
-      font-weight: 900;
-      opacity: 0.16;
-      transform: translateY(6px);
-      pointer-events:none;
-    }
-
-    /* D) Color + Watermark */
-    body.suit-style-watermark .card.face.suit-spades{ background: var(--s-spade); }
-    body.suit-style-watermark .card.face.suit-hearts{ background: var(--s-heart); }
-    body.suit-style-watermark .card.face.suit-diamonds{ background: var(--s-diamond); }
-    body.suit-style-watermark .card.face.suit-clubs{ background: var(--s-club); }
-
-    /* E) Color + Pattern overlays */
-    body.suit-style-pattern .card.face.suit-spades{
-      background:
-        repeating-linear-gradient(135deg, rgba(0,0,0,0.10), rgba(0,0,0,0.10) 6px, rgba(0,0,0,0.00) 6px, rgba(0,0,0,0.00) 12px),
-        var(--s-spade);
-    }
-    body.suit-style-pattern .card.face.suit-hearts{
-      background:
-        radial-gradient(circle at 6px 6px, rgba(0,0,0,0.12) 2px, rgba(0,0,0,0.00) 3px),
-        radial-gradient(circle at 16px 16px, rgba(0,0,0,0.12) 2px, rgba(0,0,0,0.00) 3px),
-        var(--s-heart);
-      background-size: 20px 20px;
-    }
-    body.suit-style-pattern .card.face.suit-diamonds{
-      background:
-        repeating-linear-gradient(45deg, rgba(0,0,0,0.10), rgba(0,0,0,0.10) 3px, rgba(0,0,0,0.00) 3px, rgba(0,0,0,0.00) 9px),
-        repeating-linear-gradient(-45deg, rgba(0,0,0,0.06), rgba(0,0,0,0.06) 3px, rgba(0,0,0,0.00) 3px, rgba(0,0,0,0.00) 9px),
-        var(--s-diamond);
-    }
-    body.suit-style-pattern .card.face.suit-clubs{
-      background:
-        linear-gradient(rgba(0,0,0,0.06), rgba(0,0,0,0.06)),
-        repeating-linear-gradient(0deg, rgba(0,0,0,0.12), rgba(0,0,0,0.12) 2px, rgba(0,0,0,0.00) 2px, rgba(0,0,0,0.00) 10px),
-        repeating-linear-gradient(90deg, rgba(0,0,0,0.06), rgba(0,0,0,0.06) 2px, rgba(0,0,0,0.00) 2px, rgba(0,0,0,0.00) 10px),
-        var(--s-club);
-    }
-
-    /* F) Big Corner Glyphs (max clarity without recolor) */
-    body.suit-style-corners .val-tl{ font-size: clamp(18px, calc(var(--card-w) * 0.32), 26px); }
-    body.suit-style-corners .suit-tr{ font-size: clamp(18px, calc(var(--card-w) * 0.32), 26px); }
-    body.suit-style-corners .val-center{ opacity: 0.35; }
-
-    /* G) Colorblind-safe palette (also boosts glyph sizes a bit) */
-    body.suit-style-cb .card.face{ color:#fff !important; border-color: rgba(255,255,255,.35); }
-    body.suit-style-cb .card.face.suit-spades{ background: var(--s-spade-cb); }
-    body.suit-style-cb .card.face.suit-hearts{ background: var(--s-heart-cb); }
-    body.suit-style-cb .card.face.suit-diamonds{ background: var(--s-diamond-cb); color:#111 !important; border-color: rgba(0,0,0,.25); }
-    body.suit-style-cb .card.face.suit-clubs{ background: var(--s-club-cb); }
-    body.suit-style-cb .val-tl, body.suit-style-cb .suit-tr{ text-shadow: 0 1px 1px rgba(0,0,0,0.35); }
-
-  
-/* --- Mobile QoL: header wrap + safe width --- */
-header{ flex-wrap: nowrap; }
-header .controls{
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 6px;
-  min-width: 0;
 }
-header .controls > *{ flex: 0 0 auto; }
-@media (max-width: 520px){
-  header{
-    flex-wrap: wrap;
-    row-gap: 6px;
-    padding: calc(6px + env(safe-area-inset-top)) 8px 6px;
-  }
-  header h1{ flex: 1 1 120px; font-size: 14px; margin-right: 6px; }
-  header .controls{ flex: 1 1 100%; }
-  header .controls button,
-  header .controls select{
-    height: 28px;
-    font-size: 12px;
-    padding: 0 8px;
-    max-width: 100%;
-  }
-}
-
-
-/* Rules Modal */
-.rules-modal{
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-.rules-modal.hidden{ display: none; }
-.rules-content{
-  background: #ffffff;
-  color: #111;
-  padding: 20px;
-  border-radius: 8px;
-  max-width: 90%;
-  width: 420px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-}
-.rules-content h2{ margin-top: 0; }
-.rules-content button{
-  margin-top: 12px;
-  padding: 6px 12px;
-  font-weight: bold;
-}
-
-
-/* Rules modal formatting */
-.rules-content{
-  max-height: min(80vh, 620px);
-  overflow: auto;
-}
-.rules-content h2{ margin: 0 0 10px; }
-.rules-content h3{
-  margin: 14px 0 6px;
-  font-size: 14px;
-}
-.rules-content p{
-  margin: 6px 0;
-  line-height: 1.35;
-}
-.rules-content ul{ margin: 6px 0 8px 18px; }
-.rules-content ul.examples{ margin-top: 4px; }
-.rules-content code{
-  background: rgba(0,0,0,0.06);
-  padding: 1px 4px;
-  border-radius: 4px;
-  font-weight: 700;
-}
-
-</style>
-</head>
-<body class="suit-style-normal">
-  <header>
-    <h1>Build-By-Suit Solitaire</h1>
-    <div class="controls">
-      <button id="hintBtn" onclick="showHint()">Hint</button>
-      
-      <label class="suit-style-label" for="suitStyleSelect">Suit Style:</label>
-      <select id="suitStyleSelect" title="Choose suit distinction style">
-        <option value="normal">Normal</option>
-        <option value="color">Color Background</option>
-        <option value="dark">Dark Background</option>
-        <option value="border">Color + Border</option>
-        <option value="watermark">Color + Watermark</option>
-        <option value="pattern">Color + Pattern</option>
-        <option value="corners">Big Corner Glyphs</option>
-        <option value="cb">Colorblind-Safe</option>
-      </select>
-
-      
-      <button id="rulesBtn" title="View rules">Rules</button>
-<button id="autoBtn">Auto</button>
-      <button id="giveUpBtn">Give Up</button>
-      <button id="undoBtn">Undo</button>
-      <button id="newGameBtn">New</button>
-    </div>
-  </header>
-
-  <div class="app">
-    <div class="top-section">
-      <div class="zone-found">
-        <div class="zone-title">Foundations</div>
-        <div class="foundations-row">
-          <div class="foundation" data-id="0"></div>
-          <div class="foundation" data-id="1"></div>
-          <div class="foundation" data-id="2"></div>
-          <div class="foundation" data-id="3"></div>
-        </div>
-      </div>
-
-      <div class="zone-hand">
-        <div class="zone-title">Cells</div>
-        <div class="hand-row">
-          <div class="hand-slot" data-id="0"></div>
-          <div class="hand-slot" data-id="1"></div>
-          <div class="hand-slot" data-id="2"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="zone-tableau">
-      <div class="tableau-row" id="tableau">
-        <div class="pile" data-id="0"></div>
-        <div class="pile" data-id="1"></div>
-        <div class="pile" data-id="2"></div>
-        <div class="pile" data-id="3"></div>
-        <div class="pile" data-id="4"></div>
-        <div class="pile" data-id="5"></div>
-        <div class="pile" data-id="6"></div>
-      </div>
-    </div>
-  </div>
-
-  <div id="drag-ghost"></div>
-
-  <div id="modalWin" class="modal-overlay">
-    <div class="modal-box">
-      <h2>Victory!</h2>
-      <p>You have conquered the cards.</p>
-      <div class="modal-actions">
-        <button onclick="start()">Play Again</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="modalLose" class="modal-overlay">
-    <div class="modal-box">
-      <h2 style="color:#b71c1c">Out of Moves</h2>
-      <p>The cards have won this round.</p>
-      <div class="modal-actions">
-        <button onclick="undo()">Undo</button>
-        <button onclick="start()">New Game</button>
-      </div>
-    </div>
-  </div>
-
-<script>
-const suits = ["♠","♥","♦","♣"];
-const ranks = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
-const suitColors = { "♠":"#212121", "♥":"#d50000", "♦":"#0277bd", "♣":"#2e7d32" };
-
-const suitClass = { "♠":"spades", "♥":"hearts", "♦":"diamonds", "♣":"clubs" };
-
-const SUIT_STYLE_KEY = "rs_suitStyle_v1";
-
-function applySuitStyle(style){
-  const clsPrefix = "suit-style-";
-  // remove existing suit-style-* classes
-  document.body.className = document.body.className
-    .split(/\s+/)
-    .filter(c => c && !c.startsWith(clsPrefix))
-    .join(" ");
-  document.body.classList.add(clsPrefix + style);
-
-  const sel = document.getElementById("suitStyleSelect");
-  if(sel && sel.value !== style) sel.value = style;
-
-  try { localStorage.setItem(SUIT_STYLE_KEY, style); } catch(e) {}
-}
-
-function loadSuitStyle(){
-  let style = "normal";
-  try { style = localStorage.getItem(SUIT_STYLE_KEY) || "normal"; } catch(e) {}
-  const allowed = new Set(["normal","color","dark","border","watermark","pattern","corners","cb"]);
-  if(!allowed.has(style)) style = "normal";
-  applySuitStyle(style);
-}
-
-function initSuitStyleUI(){
-  const sel = document.getElementById("suitStyleSelect");
-  if(sel){
-    sel.addEventListener("change", () => applySuitStyle(sel.value));
-  }
-  loadSuitStyle();
-}
-
-
-
-let tableau=[[],[],[],[],[],[],[]];
-let foundations=[[],[],[],[]];
-let hand=[null,null,null];
-let historyStack=[];
-let selected=null;
 
 function makeDeck(){
   const d=[]; for(const s of suits){ for(let r=0;r<ranks.length;r++){ d.push({suit:s,rank:ranks[r],value:r+1,faceUp:true}); } }
@@ -1137,10 +624,13 @@ function undo(){
     hand = prev.hand;
     selected = null;
     fit(); render();
+  persistNow();
   }
+}
 }
 
 function start(){
+  persistClear();
   closeModals();
   tableau=[[],[],[],[],[],[],[]]; foundations=[[],[],[],[]]; hand=[null,null,null]; historyStack=[]; selected=null;
   const deck=makeDeck(); shuffle(deck);
@@ -1234,6 +724,7 @@ function autoPlay(){
     }
   }
   if(loops>0) render();
+  persistNow();
   checkGameState();
 }
 
@@ -1492,7 +983,7 @@ function commitMove(targetType, targetIdx){
         success = true;
      }
   }
-  if(success) { render(); checkGameState(); } else render();
+  if(success) { render(); persistNow(); checkGameState(); } else render();
 }
 
 function cardClick(type, idx, cardIdx){
@@ -1522,7 +1013,7 @@ function cardClick(type, idx, cardIdx){
          success=executePileToHand(selected.idx, idx);
     }
     
-    if(success) { selected=null; render(); checkGameState(); return; }
+    if(success) { selected=null; render(); persistNow(); checkGameState(); return; }
     else {
         if(type==='pile' && !tableau[idx][cardIdx].faceUp){ selected=null; render(); return; }
     }
@@ -1687,7 +1178,7 @@ try {
   ro.observe(document.body);
 } catch(e) {}
 
-start();
+boot();
 
 initSuitStyleUI();
 
