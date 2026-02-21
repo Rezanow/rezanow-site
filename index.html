@@ -698,6 +698,7 @@ function startTimer(){
     elapsedMs += now - lastTickTs;
     lastTickTs = now;
     updateRunStatsUI();
+    persistGameState();
   }, 1000);
 }
 
@@ -926,6 +927,10 @@ function showHint(){
   alert("No suggestions found.");
 }
 
+function canFinalizeLoss(){
+  return historyStack.length === 0;
+}
+
 /* --- GAME STATE CHECKS --- */
 function checkGameState(){
   if(isWin()){
@@ -935,7 +940,7 @@ function checkGameState(){
   } else {
     // Check for loss (no moves possible)
     if(!findAnyMove(false)){
-      recordGameResult('loss');
+      if(canFinalizeLoss()) recordGameResult('loss');
       document.getElementById('modalLose').classList.add('active');
     }
   }
@@ -1357,7 +1362,7 @@ document.getElementById("newGameBtn").onclick = start;
 document.getElementById("undoBtn").onclick = undo;
 document.getElementById("autoBtn").onclick = autoPlay;
 document.getElementById("giveUpBtn").onclick = () => {
-  recordGameResult('loss');
+  if(canFinalizeLoss()) recordGameResult('loss');
   document.getElementById('modalLose').classList.add('active');
 };
 document.getElementById("statsBtn").onclick = () => {
