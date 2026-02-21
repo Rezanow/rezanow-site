@@ -79,6 +79,8 @@ jobs:
           echo "Resolved APP_VERSION=${APP_VERSION}"
 
       - name: Inject app version into footer build artifact
+        env:
+          APP_VERSION_TAG: ${{ steps.version.outputs.app_version }}
         shell: bash
         run: |
           set -euo pipefail
