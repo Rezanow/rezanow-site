@@ -423,15 +423,18 @@ header .controls > *{ flex: 0 0 auto; }
     overflow: hidden;
     max-height: 0;
     opacity: 0;
+    visibility: hidden;
     transform: translateY(-4px);
     pointer-events: none;
-    transition: max-height 0.2s ease, opacity 0.2s ease, transform 0.2s ease;
+    transition: max-height 0.2s ease, opacity 0.2s ease, transform 0.2s ease, visibility 0s linear 0.2s;
   }
   header.menu-open .controls{
     max-height: 260px;
     opacity: 1;
+    visibility: visible;
     transform: translateY(0);
     pointer-events: auto;
+    transition-delay: 0s;
   }
   header .controls button,
   header .controls select{
@@ -1532,10 +1535,26 @@ const menuToggleBtn = document.getElementById('menuToggle');
 const headerControlsEl = document.getElementById('headerControls');
 const mobileMenuQuery = window.matchMedia('(max-width: 520px)');
 
+function syncMenuAccessibility(){
+  if(!headerControlsEl) return;
+  const shouldHideControls = mobileMenuQuery.matches && !headerEl.classList.contains('menu-open');
+  headerControlsEl.toggleAttribute('inert', shouldHideControls);
+  headerControlsEl.setAttribute('aria-hidden', String(shouldHideControls));
+}
+
 function setMenuOpen(isOpen){
   if(!headerEl || !menuToggleBtn || !headerControlsEl) return;
   headerEl.classList.toggle('menu-open', isOpen);
   menuToggleBtn.setAttribute('aria-expanded', String(isOpen));
+  syncMenuAccessibility();
+}
+
+function syncMenuForViewport(){
+  if(!mobileMenuQuery.matches){
+    headerEl.classList.remove('menu-open');
+    menuToggleBtn.setAttribute('aria-expanded', 'false');
+  }
+  syncMenuAccessibility();
 }
 
 if(menuToggleBtn){
@@ -1556,11 +1575,14 @@ if(menuToggleBtn){
   });
 });
 
+syncMenuForViewport();
+
 window.addEventListener('resize', () => {
-  if(!mobileMenuQuery.matches){
-    setMenuOpen(false);
-  }
+  syncMenuForViewport();
 });
+if(mobileMenuQuery.addEventListener){
+  mobileMenuQuery.addEventListener('change', syncMenuForViewport);
+}
 
 // Rules modal behavior
 document.addEventListener('DOMContentLoaded', () => {
