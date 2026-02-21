@@ -473,6 +473,9 @@ header .controls > *{ flex: 0 0 auto; }
         <option value="cb">Colorblind-Safe</option>
       </select>
 
+      <label class="suit-style-label" for="doubleClickFoundationToggle">Double-click to Foundation</label>
+      <input id="doubleClickFoundationToggle" type="checkbox" title="Double-click a top card or free-cell card to move it to a valid foundation" />
+
       
       <button id="rulesBtn" title="View rules">Rules</button>
       <button id="statsBtn" title="View stats">Stats</button>
@@ -570,6 +573,7 @@ const suitClass = { "♠":"spades", "♥":"hearts", "♦":"diamonds", "♣":"clu
 const SUIT_STYLE_KEY = "rs_suitStyle_v1";
 const GAME_STATE_KEY = "rs_gameState_v1";
 const STATS_HISTORY_KEY = "rs_statsHistory_v1";
+const DBL_CLICK_FOUNDATION_KEY = "rs_dblClickFoundation_v1";
 const MAX_STATS_HISTORY = 100;
 const APP_VERSION = "__APP_VERSION__";
 
@@ -604,6 +608,36 @@ function initSuitStyleUI(){
   loadSuitStyle();
 }
 
+function loadDoubleClickFoundationPreference(){
+  try {
+    const raw = localStorage.getItem(DBL_CLICK_FOUNDATION_KEY);
+    if(raw === null){
+      doubleClickToFoundationEnabled = true;
+      return;
+    }
+    doubleClickToFoundationEnabled = raw === "1";
+  } catch(e){
+    doubleClickToFoundationEnabled = true;
+  }
+}
+
+function applyDoubleClickFoundationPreference(enabled){
+  doubleClickToFoundationEnabled = !!enabled;
+  const checkbox = document.getElementById("doubleClickFoundationToggle");
+  if(checkbox) checkbox.checked = doubleClickToFoundationEnabled;
+  try {
+    localStorage.setItem(DBL_CLICK_FOUNDATION_KEY, doubleClickToFoundationEnabled ? "1" : "0");
+  } catch(e) {}
+}
+
+function initDoubleClickFoundationUI(){
+  loadDoubleClickFoundationPreference();
+  const checkbox = document.getElementById("doubleClickFoundationToggle");
+  if(!checkbox) return;
+  checkbox.checked = doubleClickToFoundationEnabled;
+  checkbox.addEventListener("change", () => applyDoubleClickFoundationPreference(checkbox.checked));
+}
+
 function renderAppVersion(){
   const versionEl = document.getElementById("appVersion");
   if(versionEl) versionEl.textContent = APP_VERSION;
@@ -622,6 +656,7 @@ let elapsedMs=0;
 let timerInterval=null;
 let lastTickTs=Date.now();
 let gameFinished=false;
+let doubleClickToFoundationEnabled=true;
 
 const MAX_PERSISTED_HISTORY = 150;
 
@@ -887,6 +922,20 @@ function executePileToHand(srcI, handIdx){
   flipTop(srcI);
   persistGameState();
   return true;
+}
+
+function moveCardToAnyFoundation(type, idx, cardIdx){
+  if(type === 'pile'){
+    if(cardIdx !== tableau[idx].length - 1) return false;
+    const c = tableau[idx][cardIdx];
+    return tryFoundation(c, 'pile', idx, cardIdx);
+  }
+  if(type === 'hand'){
+    const c = hand[idx];
+    if(!c) return false;
+    return tryFoundation(c, 'hand', idx);
+  }
+  return false;
 }
 
 function flipTop(i){
@@ -1245,6 +1294,15 @@ function createCardEl(c, type, idx, cardIdx){
   el.ontouchmove = handleTouchMove;
   el.ontouchend = handleTouchEnd;
   el.onclick = (e) => { e.stopPropagation(); cardClick(type, idx, cardIdx); };
+  el.ondblclick = (e) => {
+    e.stopPropagation();
+    if(!doubleClickToFoundationEnabled) return;
+    if(moveCardToAnyFoundation(type, idx, cardIdx)){
+      selected = null;
+      render();
+      checkGameState();
+    }
+  };
   el.innerHTML = `<div class="val-tl">${c.rank}</div><div class="suit-tr">${c.suit}</div><div class="val-center">${c.rank}</div>`;
   return el;
 }
@@ -1396,6 +1454,7 @@ if(loadPersistedGameState()){
 renderStatsModal();
 
 initSuitStyleUI();
+initDoubleClickFoundationUI();
 renderAppVersion();
 
 // Rules modal behavior
