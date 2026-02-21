@@ -231,7 +231,6 @@ width: 100%;
       --suit-bg-clubs: #e8f5e9;    /* light green */
     }
     /* Slightly smaller label on narrow screens */
-    }
 
   
 /* Suit style control */
@@ -260,6 +259,11 @@ width: 100%;
 
     @media (max-width: 420px){
       .suit-style-label{ display:none; }
+      .dblclick-foundation-label{
+        display: inline-flex;
+        font-size: 11px;
+        align-items: center;
+      }
       #suitStyleSelect{ max-width: 140px; padding: 0 6px; }
     }
 
@@ -473,7 +477,7 @@ header .controls > *{ flex: 0 0 auto; }
         <option value="cb">Colorblind-Safe</option>
       </select>
 
-      <label class="suit-style-label" for="doubleClickFoundationToggle">Double-click to Foundation</label>
+      <label class="suit-style-label dblclick-foundation-label" for="doubleClickFoundationToggle">Double-click to Foundation</label>
       <input id="doubleClickFoundationToggle" type="checkbox" title="Double-click a top card or free-cell card to move it to a valid foundation" />
 
       
