@@ -1,0 +1,85 @@
+name: release-and-version
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  commitlint:
+    name: conventional-commits
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate commit messages
+        uses: wagoid/commitlint-github-action@v6
+        with:
+          configFile: commitlint.config.cjs
+
+  release:
+    name: release-please
+    runs-on: ubuntu-latest
+    needs: commitlint
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - name: Run release-please
+        id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          config-file: .release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  build-versioned-footer:
+    name: build-with-version-footer
+    runs-on: ubuntu-latest
+    needs: [commitlint, release]
+    if: always() && needs.commitlint.result == 'success'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version string for footer injection
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHORT_SHA="${GITHUB_SHA::7}"
+
+          if [[ "${GITHUB_REF}" == "refs/heads/main" && "${{ needs.release.outputs.release_created }}" == "true" && -n "${{ needs.release.outputs.tag_name }}" ]]; then
+            APP_VERSION="${{ needs.release.outputs.tag_name }}"
+          else
+            BASE_TAG="$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)"
+            if [[ -z "$BASE_TAG" ]]; then
+              BASE_TAG="v0.0.0"
+            fi
+            APP_VERSION="${BASE_TAG}-dev+${SHORT_SHA}"
+          fi
+
+          echo "app_version=${APP_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Resolved APP_VERSION=${APP_VERSION}"
+
+      - name: Inject app version into footer build artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          cp index.html build/index.html
+          sed -i "s|__APP_VERSION__|${{ steps.version.outputs.app_version }}|g" build/index.html
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-build
+          path: build/index.html
