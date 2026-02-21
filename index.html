@@ -710,7 +710,12 @@ function initDoubleClickFoundationUI(){
 
 function renderAppVersion(){
   const versionEl = document.getElementById("appVersion");
-  if(versionEl) versionEl.textContent = APP_VERSION;
+  if(!versionEl) return;
+
+  const resolvedVersion = (typeof APP_VERSION === "string" ? APP_VERSION.trim() : "");
+  const versionPlaceholder = "__APP_" + "VERSION__";
+  const isPlaceholder = resolvedVersion === versionPlaceholder;
+  versionEl.textContent = (!resolvedVersion || isPlaceholder) ? "dev-local" : resolvedVersion;
 }
 
 
