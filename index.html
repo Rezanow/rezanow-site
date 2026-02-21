@@ -508,6 +508,7 @@ const suitColors = { "♠":"#212121", "♥":"#d50000", "♦":"#0277bd", "♣":"#
 const suitClass = { "♠":"spades", "♥":"hearts", "♦":"diamonds", "♣":"clubs" };
 
 const SUIT_STYLE_KEY = "rs_suitStyle_v1";
+const GAME_STATE_KEY = "rs_gameState_v1";
 
 function applySuitStyle(style){
   const clsPrefix = "suit-style-";
@@ -548,6 +549,35 @@ let hand=[null,null,null];
 let historyStack=[];
 let selected=null;
 
+function persistGameState(){
+  const snapshot = {
+    tableau,
+    foundations,
+    hand,
+    historyStack
+  };
+  try { localStorage.setItem(GAME_STATE_KEY, JSON.stringify(snapshot)); } catch(e) {}
+}
+
+function loadPersistedGameState(){
+  try {
+    const raw = localStorage.getItem(GAME_STATE_KEY);
+    if(!raw) return false;
+    const parsed = JSON.parse(raw);
+    if(!parsed || !Array.isArray(parsed.tableau) || !Array.isArray(parsed.foundations) || !Array.isArray(parsed.hand)) return false;
+    if(parsed.tableau.length !== 7 || parsed.foundations.length !== 4 || parsed.hand.length !== 3) return false;
+
+    tableau = parsed.tableau;
+    foundations = parsed.foundations;
+    hand = parsed.hand;
+    historyStack = Array.isArray(parsed.historyStack) ? parsed.historyStack : [];
+    selected = null;
+    return true;
+  } catch(e){
+    return false;
+  }
+}
+
 function makeDeck(){
   const d=[]; for(const s of suits){ for(let r=0;r<ranks.length;r++){ d.push({suit:s,rank:ranks[r],value:r+1,faceUp:true}); } }
   return d;
@@ -569,6 +599,7 @@ function undo(){
     foundations = prev.foundations;
     hand = prev.hand;
     selected = null;
+    persistGameState();
     fit(); render();
   }
 }
@@ -582,6 +613,7 @@ function start(){
     for(let u=0;u<7-i;u++){const c=deck.pop();c.faceUp=true;tableau[i].push(c);}
   }
   for(let k=0;k<3;k++) hand[k]=deck.pop();
+  persistGameState();
   fit();
   render();
 }
@@ -608,6 +640,7 @@ function executePileToPile(srcI, j, destI){
   tableau[srcI] = tableau[srcI].slice(0, j);
   destPile.push(...moving);
   flipTop(srcI);
+  persistGameState();
   return true;
 }
 
@@ -619,6 +652,7 @@ function executeHandToPile(handIdx, destI){
   save();
   hand[handIdx]=null;
   destPile.push(c);
+  persistGameState();
   return true;
 }
 
@@ -629,6 +663,7 @@ function tryFoundation(c, srcType, srcIdx, cardIdx){
       foundations[f].push(c);
       if(srcType==="pile") { tableau[srcIdx].pop(); flipTop(srcIdx); }
       else if(srcType==="hand") { hand[srcIdx]=null; }
+      persistGameState();
       return true;
     }
   }
@@ -641,7 +676,9 @@ function executePileToHand(srcI, handIdx){
   if(!p.length) return false;
   save();
   hand[handIdx] = p.pop();
-  flipTop(srcI); return true;
+  flipTop(srcI);
+  persistGameState();
+  return true;
 }
 
 function flipTop(i){
@@ -922,6 +959,7 @@ function commitMove(targetType, targetIdx){
         save(); foundations[targetIdx].push(c);
         if(dragSource.type==='pile'){ tableau[dragSource.idx].pop(); flipTop(dragSource.idx); }
         else hand[dragSource.idx]=null;
+        persistGameState();
         success = true;
      }
   }
@@ -944,6 +982,7 @@ function cardClick(type, idx, cardIdx){
          save(); foundations[idx].push(c);
          if(selected.type==='pile'){ tableau[selected.idx].pop(); flipTop(selected.idx); }
          else hand[selected.idx]=null;
+         persistGameState();
          success=true;
        }
     } 
@@ -1120,7 +1159,12 @@ try {
   ro.observe(document.body);
 } catch(e) {}
 
-start();
+if(loadPersistedGameState()){
+  fit();
+  render();
+} else {
+  start();
+}
 
 initSuitStyleUI();
 
