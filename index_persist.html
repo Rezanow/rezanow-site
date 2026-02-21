@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Russian Solitaire v5.0 (Final Polish)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <style>
+    :root{
+      --header-h: 44px;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+
+      --card-w: 80px;
+      --card-h: 116px;
+      --stack-gap: 24px;
+      --col-gap: 8px;
+      --radius: 6px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #205c36;
+      color: #fff;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      overflow: hidden;
+      height: 100vh; width: 100vw;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+    }
+    header {
+      flex-shrink: 0; 
+      display:flex; justify-content:space-between; align-items:center; 
+      padding: calc(6px + var(--safe-top)) calc(12px + var(--safe-right)) 6px calc(12px + var(--safe-left));
+      background: rgba(0,0,0,0.25);
+}
+    header h1 { margin: 0; font-weight: 700; font-size: 16px; letter-spacing: 0.5px;}
+
+    .controls { display:flex; gap:8px; }
+    button {
+      border: none; border-radius: 4px; padding: 6px 12px; 
+      font-weight: 600; font-size: 12px; cursor: pointer;
+      background: #e0e0e0; color: #333; box-shadow: 0 2px 2px rgba(0,0,0,0.2);
+    }
+    button:active { transform: translateY(1px); }
+    button#autoBtn { background: #ffda2b; color: #000; }
+    button#hintBtn { background: #e1bee7; color: #4a148c; }
+    button#giveUpBtn { background: #ef9a9a; color: #b71c1c; }
+
+    .app {
+      flex: 1 1 auto;
+      min-height: 0;
+ 
+      display: flex; flex-direction: column; 
+      padding: 8px calc(4px + var(--safe-right)) calc(8px + var(--safe-bottom)) calc(4px + var(--safe-left));
+width: 100%;
+    }
+    
+    .top-section { 
+      display: flex; justify-content: center; gap: 12px; 
+      margin-bottom: 8px; flex-shrink: 0;
+    }
+    .zone-title { 
+      text-align:center; font-size: 9px; text-transform: uppercase; 
+      opacity: .5; margin-bottom: 2px;
+    }
+
+    .foundations-row, .hand-row { display:flex; gap: 4px; }
+    
+    .zone-tableau {
+        flex-grow: 1; position: relative;
+    }
+
+    .tableau-row { 
+      display:flex; gap: var(--col-gap); justify-content:center; 
+      height: 100%; padding-top: 4px;
+    }
+
+    .pile, .foundation, .hand-slot {
+      width: var(--card-w);
+      min-height: var(--card-h);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: var(--radius);
+      position: relative;
+      background: rgba(0,0,0,0.1);
+      transition: width 0.1s, height 0.1s;
+    }
+    
+    /* Card Styles */
+    .card {
+      position: absolute;
+      width: var(--card-w); height: var(--card-h);
+      border-radius: var(--radius);
+      background: #fdfbf7;
+      box-shadow: 1px 1px 3px rgba(0,0,0,0.4);
+      cursor: grab;
+      border: 1px solid #bbb;
+      z-index: 10;
+      transition: transform 0.1s;
+    }
+    .card:active { transform: scale(0.96); }
+    .card.back {
+      background: repeating-linear-gradient(45deg, #1a237e, #1a237e 5px, #283593 5px, #283593 10px);
+      border: 1px solid #eee;
+    }
+    
+    .val-tl { 
+      position: absolute; top: 4px; left: 6px; 
+      font-size: clamp(14px, calc(var(--card-w) * 0.25), 20px); 
+      font-weight: 700; line-height: 1;
+    }
+    .suit-tr { 
+      position: absolute; top: 4px; right: 6px; 
+      font-size: clamp(14px, calc(var(--card-w) * 0.25), 20px); 
+      line-height: 1;
+    }
+    .val-center { 
+      position: absolute; top: 55%; left: 50%; 
+      transform: translate(-50%, -50%); 
+      font-size: calc(var(--card-w) * 0.7); 
+      font-weight: 800;
+      letter-spacing: -2px;
+      opacity: 1; 
+      pointer-events: none;
+    }
+    
+    .card.dragging { opacity: 0; } 
+    .drag-over { background: rgba(255, 218, 43, 0.4); border-color: #ffda2b; box-shadow: 0 0 8px #ffda2b; }
+    .selected { outline: 3px solid #ffda2b; z-index: 100 !important; }
+
+    @keyframes pulse-pink {
+      0% { box-shadow: 0 0 0 0 rgba(236, 64, 122, 0.7); border-color: #ec407a; }
+      70% { box-shadow: 0 0 0 10px rgba(236, 64, 122, 0); border-color: #ec407a; }
+      100% { box-shadow: 0 0 0 0 rgba(236, 64, 122, 0); border-color: #ec407a; }
+    }
+    .hint-source { animation: pulse-pink 1.5s infinite; z-index: 1000 !important; }
+    .hint-target { border: 2px solid #ec407a; background: rgba(236, 64, 122, 0.2); }
+
+    #drag-ghost {
+      position: fixed; pointer-events: none; z-index: 9999;
+      opacity: 0.95; transform: scale(1.05);
+      box-shadow: 5px 5px 15px rgba(0,0,0,0.5);
+      display: none;
+    }
+
+    /* MODAL STYLES */
+    .modal-overlay {
+      position: fixed; top:0; left:0; width:100%; height:100%;
+      background: rgba(0,0,0,0.6);
+      display: flex; justify-content: center; align-items: center;
+      z-index: 10000;
+      opacity: 0; pointer-events: none; transition: opacity 0.3s;
+    }
+    .modal-overlay.active { opacity: 1; pointer-events: auto; }
+    .modal-box {
+      background: white; color: #333;
+      padding: 30px; border-radius: 12px;
+      text-align: center; max-width: 300px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+    .modal-box h2 { margin-top: 0; color: #205c36; }
+    .modal-actions { margin-top: 20px; display: flex; gap: 10px; justify-content: center; }
+    .modal-actions button { background: #205c36; color: white; padding: 10px 20px; font-size: 14px; }
+    
+    @media (prefers-reduced-motion: reduce){
+      * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+      .confetti { display: none !important; }
+    }
+
+    /* Confetti */
+    .confetti {
+      position: absolute; width: 10px; height: 10px;
+      background: #f00;
+      animation: fall linear forwards;
+    }
+    @keyframes fall { to { transform: translateY(100vh) rotate(720deg); } }
+    @supports (height: 100dvh){
+      @keyframes fall { to { transform: translateY(100dvh) rotate(720deg); } }
+    }
+  
+    /* Suit background color accessibility toggle */
+    :root{
+      --suit-bg-spades: #e3f2fd;   /* light blue */
+      --suit-bg-hearts: #ffebee;   /* light red/pink */
+      --suit-bg-diamonds: #fff8e1; /* light amber */
+      --suit-bg-clubs: #e8f5e9;    /* light green */
+    }
+    /* Slightly smaller label on narrow screens */
+    }
+
+  
+/* Suit style control */
+    .suit-style-label{
+      font-size: 12px;
+      font-weight: 700;
+      opacity: .9;
+      align-self: center;
+      margin-left: 2px;
+      margin-right: 2px;
+      white-space: nowrap;
+    }
+    #suitStyleSelect{
+      height: 28px;
+      border-radius: 4px;
+      border: 1px solid rgba(0,0,0,0.25);
+      padding: 0 8px;
+      font-weight: 700;
+      font-size: 12px;
+      background: #e0e0e0;
+      color: #222;
+      box-shadow: 0 2px 2px rgba(0,0,0,0.2);
+      max-width: 160px;
+    }
+    #suitStyleSelect:active{ transform: translateY(1px); }
+
+    @media (max-width: 420px){
+      .suit-style-label{ display:none; }
+      #suitStyleSelect{ max-width: 140px; padding: 0 6px; }
+    }
+
+    /* ==============================
+       Suit Distinction Styles
+       Applies only to face-up cards: .card.face
+       Suit class names: .suit-spades/.suit-hearts/.suit-diamonds/.suit-clubs
+       ============================== */
+    body.suit-style-normal .card.face{ /* baseline */ }
+
+    /* A) Color Background (lighter) */
+    :root{
+      --s-spade: #cfe3ff;
+      --s-heart: #ffd0d0;
+      --s-diamond: #ffe7b8;
+      --s-club: #d6f5df;
+
+      --s-spade-dark: #1f3a5a;
+      --s-heart-dark: #7a0b0b;
+      --s-diamond-dark: #8a5a00;
+      --s-club-dark: #0b4d22;
+
+      --s-spade-cb: #0D47A1;
+      --s-heart-cb: #D32F2F;
+      --s-diamond-cb: #F9A825;
+      --s-club-cb: #00796B;
+    }
+
+    body.suit-style-color .card.face.suit-spades{ background: var(--s-spade); }
+    body.suit-style-color .card.face.suit-hearts{ background: var(--s-heart); }
+    body.suit-style-color .card.face.suit-diamonds{ background: var(--s-diamond); }
+    body.suit-style-color .card.face.suit-clubs{ background: var(--s-club); }
+
+    /* B) Dark Background */
+    body.suit-style-dark .card.face{ color:#fff !important; }
+    body.suit-style-dark .card.face.suit-spades{ background: var(--s-spade-dark); border-color: rgba(255,255,255,.35); }
+    body.suit-style-dark .card.face.suit-hearts{ background: var(--s-heart-dark); border-color: rgba(255,255,255,.35); }
+    body.suit-style-dark .card.face.suit-diamonds{ background: var(--s-diamond-dark); border-color: rgba(255,255,255,.35); }
+    body.suit-style-dark .card.face.suit-clubs{ background: var(--s-club-dark); border-color: rgba(255,255,255,.35); }
+
+    /* C) Color + Border (strong edge cue) */
+    body.suit-style-border .card.face{ border-width: 3px; }
+    body.suit-style-border .card.face.suit-spades{ background: var(--s-spade); border-color: #1f3a5a; }
+    body.suit-style-border .card.face.suit-hearts{ background: var(--s-heart); border-color: #7a0b0b; }
+    body.suit-style-border .card.face.suit-diamonds{ background: var(--s-diamond); border-color: #8a5a00; }
+    body.suit-style-border .card.face.suit-clubs{ background: var(--s-club); border-color: #0b4d22; }
+
+    /* Shared watermark/pattern infrastructure */
+    body.suit-style-watermark .card.face,
+    body.suit-style-pattern .card.face{
+      overflow:hidden;
+    }
+    body.suit-style-watermark .card.face::after,
+    body.suit-style-pattern .card.face::after{
+      content: attr(data-suitglyph);
+      position:absolute;
+      inset: 0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size: calc(var(--card-w) * 1.4);
+      font-weight: 900;
+      opacity: 0.16;
+      transform: translateY(6px);
+      pointer-events:none;
+    }
+
+    /* D) Color + Watermark */
+    body.suit-style-watermark .card.face.suit-spades{ background: var(--s-spade); }
+    body.suit-style-watermark .card.face.suit-hearts{ background: var(--s-heart); }
+    body.suit-style-watermark .card.face.suit-diamonds{ background: var(--s-diamond); }
+    body.suit-style-watermark .card.face.suit-clubs{ background: var(--s-club); }
+
+    /* E) Color + Pattern overlays */
+    body.suit-style-pattern .card.face.suit-spades{
+      background:
+        repeating-linear-gradient(135deg, rgba(0,0,0,0.10), rgba(0,0,0,0.10) 6px, rgba(0,0,0,0.00) 6px, rgba(0,0,0,0.00) 12px),
+        var(--s-spade);
+    }
+    body.suit-style-pattern .card.face.suit-hearts{
+      background:
+        radial-gradient(circle at 6px 6px, rgba(0,0,0,0.12) 2px, rgba(0,0,0,0.00) 3px),
+        radial-gradient(circle at 16px 16px, rgba(0,0,0,0.12) 2px, rgba(0,0,0,0.00) 3px),
+        var(--s-heart);
+      background-size: 20px 20px;
+    }
+    body.suit-style-pattern .card.face.suit-diamonds{
+      background:
+        repeating-linear-gradient(45deg, rgba(0,0,0,0.10), rgba(0,0,0,0.10) 3px, rgba(0,0,0,0.00) 3px, rgba(0,0,0,0.00) 9px),
+        repeating-linear-gradient(-45deg, rgba(0,0,0,0.06), rgba(0,0,0,0.06) 3px, rgba(0,0,0,0.00) 3px, rgba(0,0,0,0.00) 9px),
+        var(--s-diamond);
+    }
+    body.suit-style-pattern .card.face.suit-clubs{
+      background:
+        linear-gradient(rgba(0,0,0,0.06), rgba(0,0,0,0.06)),
+        repeating-linear-gradient(0deg, rgba(0,0,0,0.12), rgba(0,0,0,0.12) 2px, rgba(0,0,0,0.00) 2px, rgba(0,0,0,0.00) 10px),
+        repeating-linear-gradient(90deg, rgba(0,0,0,0.06), rgba(0,0,0,0.06) 2px, rgba(0,0,0,0.00) 2px, rgba(0,0,0,0.00) 10px),
+        var(--s-club);
+    }
+
+    /* F) Big Corner Glyphs (max clarity without recolor) */
+    body.suit-style-corners .val-tl{ font-size: clamp(18px, calc(var(--card-w) * 0.32), 26px); }
+    body.suit-style-corners .suit-tr{ font-size: clamp(18px, calc(var(--card-w) * 0.32), 26px); }
+    body.suit-style-corners .val-center{ opacity: 0.35; }
+
+    /* G) Colorblind-safe palette (also boosts glyph sizes a bit) */
+    body.suit-style-cb .card.face{ color:#fff !important; border-color: rgba(255,255,255,.35); }
+    body.suit-style-cb .card.face.suit-spades{ background: var(--s-spade-cb); }
+    body.suit-style-cb .card.face.suit-hearts{ background: var(--s-heart-cb); }
+    body.suit-style-cb .card.face.suit-diamonds{ background: var(--s-diamond-cb); color:#111 !important; border-color: rgba(0,0,0,.25); }
+    body.suit-style-cb .card.face.suit-clubs{ background: var(--s-club-cb); }
+    body.suit-style-cb .val-tl, body.suit-style-cb .suit-tr{ text-shadow: 0 1px 1px rgba(0,0,0,0.35); }
+
+  
+/* --- Mobile QoL: header wrap + safe width --- */
+header{ flex-wrap: nowrap; }
+header .controls{
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+header .controls > *{ flex: 0 0 auto; }
+@media (max-width: 520px){
+  header{
+    flex-wrap: wrap;
+    row-gap: 6px;
+    padding: calc(6px + env(safe-area-inset-top)) 8px 6px;
+  }
+  header h1{ flex: 1 1 120px; font-size: 14px; margin-right: 6px; }
+  header .controls{ flex: 1 1 100%; }
+  header .controls button,
+  header .controls select{
+    height: 28px;
+    font-size: 12px;
+    padding: 0 8px;
+    max-width: 100%;
+  }
+}
+
+
+/* Rules Modal */
+.rules-modal{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.rules-modal.hidden{ display: none; }
+.rules-content{
+  background: #ffffff;
+  color: #111;
+  padding: 20px;
+  border-radius: 8px;
+  max-width: 90%;
+  width: 420px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+}
+.rules-content h2{ margin-top: 0; }
+.rules-content button{
+  margin-top: 12px;
+  padding: 6px 12px;
+  font-weight: bold;
+}
+
+
+/* Rules modal formatting */
+.rules-content{
+  max-height: min(80vh, 620px);
+  overflow: auto;
+}
+.rules-content h2{ margin: 0 0 10px; }
+.rules-content h3{
+  margin: 14px 0 6px;
+  font-size: 14px;
+}
+.rules-content p{
+  margin: 6px 0;
+  line-height: 1.35;
+}
+.rules-content ul{ margin: 6px 0 8px 18px; }
+.rules-content ul.examples{ margin-top: 4px; }
+.rules-content code{
+  background: rgba(0,0,0,0.06);
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+</style>
+</head>
+<body class="suit-style-normal">
+  <header>
+    <h1>Russian Solitaire</h1>
+    <div class="controls">
+      <button id="hintBtn" onclick="showHint()">Hint</button>
+      
+      <label class="suit-style-label" for="suitStyleSelect">Suit Style:</label>
+      <select id="suitStyleSelect" title="Choose suit distinction style">
+        <option value="normal">Normal</option>
+        <option value="color">Color Background</option>
+        <option value="dark">Dark Background</option>
+        <option value="border">Color + Border</option>
+        <option value="watermark">Color + Watermark</option>
+        <option value="pattern">Color + Pattern</option>
+        <option value="corners">Big Corner Glyphs</option>
+        <option value="cb">Colorblind-Safe</option>
+      </select>
+
+      
+      <button id="rulesBtn" title="View rules">Rules</button>
+<button id="autoBtn">Auto</button>
+      <button id="giveUpBtn">Give Up</button>
+      <button id="undoBtn">Undo</button>
+      <button id="newGameBtn">New</button>
+    </div>
+  </header>
+
+  <div class="app">
+    <div class="top-section">
+      <div class="zone-found">
+        <div class="zone-title">Foundations</div>
+        <div class="foundations-row">
+          <div class="foundation" data-id="0"></div>
+          <div class="foundation" data-id="1"></div>
+          <div class="foundation" data-id="2"></div>
+          <div class="foundation" data-id="3"></div>
+        </div>
+      </div>
+
+      <div class="zone-hand">
+        <div class="zone-title">Cells</div>
+        <div class="hand-row">
+          <div class="hand-slot" data-id="0"></div>
+          <div class="hand-slot" data-id="1"></div>
+          <div class="hand-slot" data-id="2"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="zone-tableau">
+      <div class="tableau-row" id="tableau">
+        <div class="pile" data-id="0"></div>
+        <div class="pile" data-id="1"></div>
+        <div class="pile" data-id="2"></div>
+        <div class="pile" data-id="3"></div>
+        <div class="pile" data-id="4"></div>
+        <div class="pile" data-id="5"></div>
+        <div class="pile" data-id="6"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="drag-ghost"></div>
+
+  <div id="modalWin" class="modal-overlay">
+    <div class="modal-box">
+      <h2>Victory!</h2>
+      <p>You have conquered the cards.</p>
+      <div class="modal-actions">
+        <button onclick="start()">Play Again</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalLose" class="modal-overlay">
+    <div class="modal-box">
+      <h2 style="color:#b71c1c">Out of Moves</h2>
+      <p>The cards have won this round.</p>
+      <div class="modal-actions">
+        <button onclick="undo()">Undo</button>
+        <button onclick="start()">New Game</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+const suits = ["♠","♥","♦","♣"];
+const ranks = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
+const suitColors = { "♠":"#212121", "♥":"#d50000", "♦":"#0277bd", "♣":"#2e7d32" };
+
+const suitClass = { "♠":"spades", "♥":"hearts", "♦":"diamonds", "♣":"clubs" };
+
+const SUIT_STYLE_KEY = "rs_suitStyle_v1";
+
+function applySuitStyle(style){
+  const clsPrefix = "suit-style-";
+  // remove existing suit-style-* classes
+  document.body.className = document.body.className
+    .split(/\s+/)
+    .filter(c => c && !c.startsWith(clsPrefix))
+    .join(" ");
+  document.body.classList.add(clsPrefix + style);
+
+  const sel = document.getElementById("suitStyleSelect");
+  if(sel && sel.value !== style) sel.value = style;
+
+  try { localStorage.setItem(SUIT_STYLE_KEY, style); } catch(e) {}
+}
+
+function loadSuitStyle(){
+  let style = "normal";
+  try { style = localStorage.getItem(SUIT_STYLE_KEY) || "normal"; } catch(e) {}
+  const allowed = new Set(["normal","color","dark","border","watermark","pattern","corners","cb"]);
+  if(!allowed.has(style)) style = "normal";
+  applySuitStyle(style);
+}
+
+function initSuitStyleUI(){
+  const sel = document.getElementById("suitStyleSelect");
+  if(sel){
+    sel.addEventListener("change", () => applySuitStyle(sel.value));
+  }
+  loadSuitStyle();
+}
+
+
+
+let tableau=[[],[],[],[],[],[],[]];
+let foundations=[[],[],[],[]];
+let hand=[null,null,null];
+let historyStack=[];
+let selected=null;
+
+
+const PERSIST_KEY = "bbs_solitaire_state_v1";
+const PERSIST_MAX_HISTORY = 2500; // safety cap (keep start-of-game plus the most recent entries)
+
+function persistNow(){
+  try{
+    if(Array.isArray(historyStack) && historyStack.length > PERSIST_MAX_HISTORY){
+      historyStack = [historyStack[0], ...historyStack.slice(-(PERSIST_MAX_HISTORY-1))];
+    }
+    const payload = { v: 1, t: Date.now(), tableau, foundations, hand, historyStack };
+    localStorage.setItem(PERSIST_KEY, JSON.stringify(payload));
+  } catch(e){
+    // storage full/blocked; ignore
+  }
+}
+
+function persistClear(){
+  try{ localStorage.removeItem(PERSIST_KEY); } catch(e) {}
+}
+
+function persistLoad(){
+  try{
+    const raw = localStorage.getItem(PERSIST_KEY);
+    if(!raw) return false;
+    const data = JSON.parse(raw);
+    if(!data || data.v !== 1) return false;
+    if(!Array.isArray(data.tableau) || data.tableau.length !== 7) return false;
+    if(!Array.isArray(data.foundations) || data.foundations.length !== 4) return false;
+    if(!Array.isArray(data.hand) || data.hand.length !== 3) return false;
+    if(!Array.isArray(data.historyStack)) return false;
+
+    tableau = data.tableau;
+    foundations = data.foundations;
+    hand = data.hand;
+    historyStack = data.historyStack;
+    selected = null;
+    closeModals();
+    clearHints();
+    return true;
+  } catch(e){
+    return false;
+  }
+}
+
+function boot(){
+  if(!persistLoad()){
+    start();
+    // start() already renders; persist baseline so reload keeps the same deal
+    persistNow();
+  } else {
+    fit();
+    render();
+  }
+}
+function makeDeck(){
+  const d=[]; for(const s of suits){ for(let r=0;r<ranks.length;r++){ d.push({suit:s,rank:ranks[r],value:r+1,faceUp:true}); } }
+  return d;
+}
+function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} }
+
+function save(){
+  // Save snapshot of current state (used as a "pre-move" history entry).
+  historyStack.push(JSON.stringify({tableau, foundations, hand}));
+}
+function undo(){
+  closeModals();
+  clearHints();
+  // History stores snapshots from BEFORE each committed change.
+  // So undo should restore the LAST saved snapshot (top of stack).
+  if(historyStack.length > 0){
+    const prev = JSON.parse(historyStack.pop());
+    tableau = prev.tableau;
+    foundations = prev.foundations;
+    hand = prev.hand;
+    selected = null;
+    fit(); render();
+  persistNow();
+    }
+}
+
+function start(){
+  closeModals();
+  clearHints();
+  tableau=[[],[],[],[],[],[],[]]; foundations=[[],[],[],[]]; hand=[null,null,null]; historyStack=[]; selected=null;
+  persistClear();
+  const deck=makeDeck(); shuffle(deck);
+  for(let i=0;i<7;i++){
+    for(let d=0;d<i;d++){const c=deck.pop();c.faceUp=false;tableau[i].push(c);}
+    for(let u=0;u<7-i;u++){const c=deck.pop();c.faceUp=true;tableau[i].push(c);}
+  }
+  for(let k=0;k<3;k++) hand[k]=deck.pop();
+  fit();
+  render();persistNow();
+}
+
+function canTableau(c,t){return c.suit===t.suit && c.value===t.value-1;}
+function canFoundation(c,p){if(!p.length)return c.value===1;return c.suit===p[p.length-1].suit&&c.value===p[p.length-1].value+1;}
+
+function executePileToPile(srcI, j, destI){
+  // Prevent dropping onto the same tableau pile (would otherwise orphan the moved cards).
+  if(srcI===destI) return false;
+
+  const moving = tableau[srcI].slice(j);
+  const destPile = tableau[destI];
+  if(!moving.length) return false;
+  if(!moving[0].faceUp) return false;
+
+  if(!destPile.length){
+    if(moving[0].rank!=="K") return false;
+  } else {
+    if(!canTableau(moving[0], destPile[destPile.length-1])) return false;
+  }
+
+  save();
+  tableau[srcI] = tableau[srcI].slice(0, j);
+  destPile.push(...moving);
+  flipTop(srcI);
+  return true;
+}
+
+function executeHandToPile(handIdx, destI){
+  const c = hand[handIdx];
+  const destPile = tableau[destI];
+  if(!destPile.length){ if(c.rank!=="K") return false; }
+  else { if(!canTableau(c, destPile[destPile.length-1])) return false; }
+  save();
+  hand[handIdx]=null;
+  destPile.push(c);
+  return true;
+}
+
+function tryFoundation(c, srcType, srcIdx, cardIdx){
+  for(let f=0; f<4; f++){
+    if(canFoundation(c, foundations[f])){
+      save();
+      foundations[f].push(c);
+      if(srcType==="pile") { tableau[srcIdx].pop(); flipTop(srcIdx); }
+      else if(srcType==="hand") { hand[srcIdx]=null; }
+      return true;
+    }
+  }
+  return false;
+}
+
+function executePileToHand(srcI, handIdx){
+  if(hand[handIdx]) return false;
+  const p = tableau[srcI];
+  if(!p.length) return false;
+  save();
+  hand[handIdx] = p.pop();
+  flipTop(srcI); return true;
+}
+
+function flipTop(i){
+  const p=tableau[i]; 
+  if(p.length && !p[p.length-1].faceUp) p[p.length-1].faceUp=true;
+}
+
+function autoPlay(){
+  clearHints();
+  let moved = true; let loops = 0;
+  while(moved && loops < 50){ 
+    moved = false; loops++;
+    for(let h=0; h<3; h++){
+      if(hand[h] && tryFoundation(hand[h], "hand", h)) { moved=true; break; }
+    }
+    if(moved) continue;
+    for(let t=0; t<7; t++){
+      const p = tableau[t];
+      if(p.length){
+        const c = p[p.length-1];
+        if(tryFoundation(c, "pile", t, p.length-1)){ moved=true; break; }
+      }
+    }
+  }
+  if(loops>0) render();
+  persistNow();
+  checkGameState();
+}
+
+function clearHints(){
+  document.querySelectorAll('.hint-source, .hint-target').forEach(el => {
+    el.classList.remove('hint-source'); el.classList.remove('hint-target');
+  });
+}
+
+function showHint(){
+  clearHints();
+  if(findAnyMove(true)) return;
+  alert("No suggestions found.");
+}
+
+/* --- GAME STATE CHECKS --- */
+function checkGameState(){
+  if(isWin()){
+    celebrate();
+    document.getElementById('modalWin').classList.add('active');
+  } else {
+    // Check for loss (no moves possible)
+    if(!findAnyMove(false)){
+      document.getElementById('modalLose').classList.add('active');
+    }
+  }
+}
+
+function findAnyMove(highlight){
+  // Returns true if a move exists. If highlight=true, it highlights it.
+  
+  // 1. Hand -> Foundation
+  for(let i=0; i<3; i++){
+    if(hand[i]){
+      for(let f=0; f<4; f++){
+        if(canFoundation(hand[i], foundations[f])){
+          if(highlight) { highlightHand(i, 'source'); highlightFoundation(f, 'target'); }
+          return true;
+        }
+      }
+    }
+  }
+  // 2. Pile Top -> Foundation
+  for(let i=0; i<7; i++){
+    if(tableau[i].length){
+      const c = tableau[i][tableau[i].length-1];
+      for(let f=0; f<4; f++){
+        if(canFoundation(c, foundations[f])){
+          if(highlight) { highlightPileCard(i, tableau[i].length-1, 'source'); highlightFoundation(f, 'target'); }
+          return true;
+        }
+      }
+    }
+  }
+  // 3. Hand -> Tableau
+  for(let i=0; i<3; i++){
+    if(hand[i]){
+      for(let t=0; t<7; t++){
+        const tp = tableau[t];
+        if(!tp.length){ 
+          if(hand[i].rank==='K'){ 
+            if(highlight) { highlightHand(i,'source'); highlightPile(t,'target'); }
+            return true; 
+          } 
+        }
+        else if(canTableau(hand[i], tp[tp.length-1])){ 
+          if(highlight) { highlightHand(i,'source'); highlightPileCard(t, tp.length-1, 'target'); }
+          return true; 
+        }
+      }
+    }
+  }
+  // 4. Pile -> Tableau (Deep moves allowed)
+  for(let i=0; i<7; i++){
+    const p = tableau[i];
+    for(let j=0; j<p.length; j++){
+      if(!p[j].faceUp) continue;
+      const c = p[j];
+      for(let t=0; t<7; t++){
+        if(i===t) continue;
+        const tp = tableau[t];
+        if(!tp.length){ 
+           if(c.rank==='K' && j>0){ // Don't move King from base to empty
+             if(highlight) { highlightPileCard(i,j,'source'); highlightPile(t,'target'); }
+             return true; 
+           } 
+        }
+        else if(canTableau(c, tp[tp.length-1])){ 
+           if(highlight) { highlightPileCard(i,j,'source'); highlightPileCard(t, tp.length-1, 'target'); }
+           return true; 
+        }
+      }
+    }
+  }
+  // 5. Pile Top -> Hand (Only if Hand slot empty)
+  for(let h=0; h<3; h++){
+      if(!hand[h]){
+          // Can we move a top card to hand? Yes.
+          // Is it useful? Maybe to uncover a card. Any visible top card on a pile > 1 deep is a candidate.
+          for(let i=0; i<7; i++){
+              if(tableau[i].length > 1){ // Only valid if revealing something or saving a card
+                  if(highlight) { highlightPileCard(i, tableau[i].length-1, 'source'); highlightHand(h, 'target'); }
+                  return true;
+              }
+          }
+      }
+  }
+  
+  return false;
+}
+
+function isWin(){
+  return foundations.reduce((a,b)=>a+b.length,0)===52;
+}
+
+function celebrate(){
+  // Confetti logic
+  for(let i=0; i<50; i++){
+    const c = document.createElement('div');
+    c.className = 'confetti';
+    c.style.left = Math.random()*100 + 'vw';
+    c.style.animationDuration = (Math.random()*2 + 2) + 's';
+    c.style.background = `hsl(${Math.random()*360}, 100%, 50%)`;
+    document.body.appendChild(c);
+    setTimeout(()=>c.remove(), 4000);
+  }
+}
+
+function closeModals(){
+  document.querySelectorAll('.modal-overlay').forEach(el => el.classList.remove('active'));
+}
+
+/* --- HIGHLIGHTERS --- */
+function highlightHand(idx, type){ 
+  const el = document.querySelector(`.hand-slot[data-id="${idx}"] .card`); if(el) el.classList.add('hint-'+type); 
+  else if(type==='target') document.querySelector(`.hand-slot[data-id="${idx}"]`).classList.add('hint-'+type);
+}
+function highlightFoundation(idx, type){ 
+  const el = document.querySelector(`.foundation[data-id="${idx}"]`); if(el) el.classList.add('hint-'+type); 
+}
+function highlightPile(idx, type){ 
+  const el = document.querySelector(`.pile[data-id="${idx}"]`); if(el) el.classList.add('hint-'+type); 
+}
+function highlightPileCard(pileIdx, cardIdx, type){ 
+  const pile = document.querySelector(`.pile[data-id="${pileIdx}"]`);
+  const cards = pile.querySelectorAll('.card');
+  if(cards[cardIdx]) cards[cardIdx].classList.add('hint-'+type);
+}
+
+/* --- INTERACTION --- */
+let dragSource = null;
+let touchClone = document.getElementById('drag-ghost');
+let touchStartCoords = {x:0, y:0};
+let isDragGesture = false;
+let touchOriginalEl = null;
+
+function handleDragStart(e, type, idx, cardIdx){
+  clearHints();
+  if(type === 'pile' && !tableau[idx][cardIdx].faceUp) { e.preventDefault(); return; }
+  dragSource = { type, idx, cardIdx };
+  e.dataTransfer.effectAllowed = "move";
+  e.dataTransfer.setData("text/plain", JSON.stringify(dragSource));
+  setTimeout(()=>e.target.classList.add('dragging'), 0);
+}
+function handleDragEnd(e){
+  e.target.classList.remove('dragging');
+  document.querySelectorAll('.drag-over').forEach(el=>el.classList.remove('drag-over'));
+  dragSource = null;
+}
+function handleDragOver(e){ e.preventDefault(); e.dataTransfer.dropEffect = "move"; }
+function handleDragEnter(e){ e.currentTarget.classList.add('drag-over'); }
+function handleDragLeave(e){ e.currentTarget.classList.remove('drag-over'); }
+function handleDrop(e, targetType, targetIdx){
+  e.preventDefault();
+  document.querySelectorAll('.drag-over').forEach(el=>el.classList.remove('drag-over'));
+  if(!dragSource) return;
+  commitMove(targetType, targetIdx);
+}
+
+function handleTouchStart(e, type, idx, cardIdx){
+  clearHints();
+  if(type === 'pile' && !tableau[idx][cardIdx].faceUp) return;
+  const touch = e.touches[0];
+  touchStartCoords = {x: touch.clientX, y: touch.clientY};
+  isDragGesture = false;
+  dragSource = { type, idx, cardIdx };
+  touchOriginalEl = e.target.closest('.card');
+}
+function handleTouchMove(e){
+  if(!dragSource) return;
+  const touch = e.touches[0];
+  const dist = Math.sqrt(Math.pow(touch.clientX - touchStartCoords.x, 2) + Math.pow(touch.clientY - touchStartCoords.y, 2));
+  if(dist > 10 && !isDragGesture){
+    isDragGesture = true;
+    const original = touchOriginalEl || e.target.closest('.card');
+    if(original){
+        const rect = original.getBoundingClientRect();
+        touchClone.innerHTML = original.innerHTML;
+        touchClone.className = "card";
+        touchClone.style.width = rect.width + "px";
+        touchClone.style.height = rect.height + "px";
+        touchClone.style.color = original.style.color;
+        touchClone.style.background = original.style.background;
+        touchClone.style.display = "block";
+        original.classList.add('dragging');
+    }
+  }
+  if(isDragGesture){
+     e.preventDefault();
+     touchClone.style.left = (touch.clientX - 20) + "px";
+     touchClone.style.top = (touch.clientY - 20) + "px";
+  }
+}
+function handleTouchEnd(e){
+  if(!dragSource) return;
+  if(isDragGesture){
+    e.preventDefault();
+    const original = touchOriginalEl;
+    if(original) original.classList.remove('dragging');
+    touchClone.style.display = 'none';
+    const touch = e.changedTouches[0];
+    const elBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+    let target = elBelow ? elBelow.closest('.pile, .foundation, .hand-slot') : null;
+    if(target){
+      let tType = target.classList.contains('pile') ? 'pile' : (target.classList.contains('foundation') ? 'foundation' : 'hand');
+      let tIdx = parseInt(target.dataset.id);
+      commitMove(tType, tIdx);
+    } else render();
+  } else {
+    e.preventDefault();
+    cardClick(dragSource.type, dragSource.idx, dragSource.cardIdx);
+  }
+  dragSource = null;
+  isDragGesture = false;
+  touchOriginalEl = null;
+}
+
+function commitMove(targetType, targetIdx){
+  let success = false;
+  if(targetType === 'pile'){
+    if(dragSource.type === 'pile') success = executePileToPile(dragSource.idx, dragSource.cardIdx, targetIdx);
+    else if(dragSource.type === 'hand') success = executeHandToPile(dragSource.idx, targetIdx);
+  } else if(targetType === 'hand'){
+    if(dragSource.type === 'pile' && dragSource.cardIdx === tableau[dragSource.idx].length-1)
+      success = executePileToHand(dragSource.idx, targetIdx);
+  } else if(targetType === 'foundation'){
+     let c;
+     if(dragSource.type==='pile'){
+       if(dragSource.cardIdx !== tableau[dragSource.idx].length-1) return;
+       c = tableau[dragSource.idx][dragSource.cardIdx];
+     } else c = hand[dragSource.idx];
+     if(canFoundation(c, foundations[targetIdx])){
+        save(); foundations[targetIdx].push(c);
+        if(dragSource.type==='pile'){ tableau[dragSource.idx].pop(); flipTop(dragSource.idx); }
+        else hand[dragSource.idx]=null;
+        success = true;
+     }
+  }
+  if(success) { render(); persistNow(); checkGameState(); } else render();
+}
+
+function cardClick(type, idx, cardIdx){
+  clearHints();
+  if(selected){
+    let success=false;
+    if(type==='foundation'){
+       let c;
+       if(selected.type==='pile'){
+         if(selected.cardIdx !== tableau[selected.idx].length-1) { selected=null; render(); return; }
+         c = tableau[selected.idx][selected.cardIdx];
+       } else {
+         c = hand[selected.idx];
+       }
+       if(canFoundation(c, foundations[idx])){
+         save(); foundations[idx].push(c);
+         if(selected.type==='pile'){ tableau[selected.idx].pop(); flipTop(selected.idx); }
+         else hand[selected.idx]=null;
+         success=true;
+       }
+    } 
+    else if(type==='pile') {
+       if(selected.type==='pile') success=executePileToPile(selected.idx, selected.cardIdx, idx);
+       else success=executeHandToPile(selected.idx, idx);
+    } else if(type==='hand'){
+       if(selected.type==='pile' && selected.cardIdx === tableau[selected.idx].length-1) 
+         success=executePileToHand(selected.idx, idx);
+    }
+    
+    if(success) { selected=null; render(); persistNow(); checkGameState(); return; }
+    else {
+        if(type==='pile' && !tableau[idx][cardIdx].faceUp){ selected=null; render(); return; }
+    }
+  }
+  
+  if(type==='pile'){
+    if(!tableau[idx][cardIdx].faceUp) return;
+    if(selected && selected.type==='pile' && selected.idx===idx && selected.cardIdx===cardIdx) selected=null;
+    else selected = {type:'pile', idx, cardIdx};
+  } else if (type==='hand'){
+    if(!hand[idx]) return;
+    if(selected && selected.type==='hand' && selected.idx===idx) selected=null;
+    else selected = {type:'hand', idx};
+  }
+  render();
+}
+
+function createCardEl(c, type, idx, cardIdx){
+  const el = document.createElement("div");
+  el.className = "card";
+  if(!c.faceUp){ el.classList.add("back"); return el; }
+  el.classList.add("face");
+  const sc = suitClass[c.suit];
+  if(sc) el.classList.add(`suit-${sc}`);
+  el.dataset.suitglyph = c.suit;
+  el.style.color = suitColors[c.suit];
+  if(selected && selected.type===type && selected.idx===idx){
+    if(type==='hand' || (type==='pile' && cardIdx >= selected.cardIdx)) el.classList.add('selected');
+  }
+  el.draggable = true;
+  el.ondragstart = (e) => handleDragStart(e, type, idx, cardIdx);
+  el.ondragend = handleDragEnd;
+  el.ontouchstart = (e) => handleTouchStart(e, type, idx, cardIdx);
+  el.ontouchmove = handleTouchMove;
+  el.ontouchend = handleTouchEnd;
+  el.onclick = (e) => { e.stopPropagation(); cardClick(type, idx, cardIdx); };
+  el.innerHTML = `<div class="val-tl">${c.rank}</div><div class="suit-tr">${c.suit}</div><div class="val-center">${c.rank}</div>`;
+  return el;
+}
+
+function render(){
+  const computedStyle = getComputedStyle(document.documentElement);
+  let gapStr = computedStyle.getPropertyValue('--stack-gap').trim();
+  let gap = parseInt(gapStr); if(isNaN(gap)) gap = 24;
+
+  document.querySelectorAll('.hand-slot').forEach(slot => {
+    slot.innerHTML = "";
+    const i = parseInt(slot.dataset.id);
+    slot.ondragover = handleDragOver; slot.ondragenter = handleDragEnter;
+    slot.ondragleave = handleDragLeave; slot.ondrop = (e) => handleDrop(e, 'hand', i);
+    slot.onclick = () => cardClick('hand', i);
+    if(hand[i]) slot.appendChild(createCardEl(hand[i], 'hand', i));
+  });
+  document.querySelectorAll('.foundation').forEach(found => {
+    found.innerHTML = "";
+    const i = parseInt(found.dataset.id);
+    found.ondragover = handleDragOver; found.ondragenter = handleDragEnter;
+    found.ondragleave = handleDragLeave; found.ondrop = (e) => handleDrop(e, 'foundation', i);
+    found.onclick = () => cardClick('foundation', i);
+    const p = foundations[i];
+    if(p.length){
+      const el = createCardEl(p[p.length-1], 'foundation', i, p.length-1);
+      el.draggable = false; el.onclick = null; el.ontouchstart=null;
+      found.appendChild(el);
+    }
+  });
+  document.querySelectorAll('.pile').forEach(pile => {
+    pile.innerHTML = "";
+    const i = parseInt(pile.dataset.id);
+    pile.ondragover = handleDragOver; pile.ondragenter = handleDragEnter;
+    pile.ondragleave = handleDragLeave; pile.ondrop = (e) => handleDrop(e, 'pile', i);
+    pile.onclick = () => { if(selected) { 
+        if(selected.type==='pile') executePileToPile(selected.idx, selected.cardIdx, i);
+        else executeHandToPile(selected.idx, i);
+        selected=null; render();
+    }};
+    const stack = tableau[i];
+    let ch = parseInt(computedStyle.getPropertyValue('--card-h').trim()) || 116;
+    pile.style.height = (ch + (stack.length-1)*gap) + "px";
+    stack.forEach((c, j) => {
+      const el = createCardEl(c, 'pile', i, j);
+      el.style.top = (j * gap) + "px";
+      pile.appendChild(el);
+    });
+  });
+}
+
+function fit(){
+  const app = document.querySelector('.app'); if(!app) return;
+
+  // Available space (account for header + safe areas already in CSS heights)
+  const availW = app.clientWidth;
+  const availH = app.clientHeight;
+
+  // Track actual header height (it can wrap on mobile) so the play area never hides behind it.
+  const headerEl = document.querySelector('header');
+  if(headerEl){
+    const hh = Math.ceil(headerEl.getBoundingClientRect().height);
+    document.documentElement.style.setProperty('--header-h', hh + "px");
+  }
+
+  const maxLen = Math.max(...tableau.map(p=>p.length || 1));
+
+  // "Design" dimensions (desktop-ish baseline), then scale down as needed.
+  const baseW = 84;            // card width
+  const baseH = baseW * 1.45;  // card height ratio
+  const baseGap = 24;          // stack gap
+  const baseColGap = 8;        // column gap
+  const cardBorder = 2;        // rough border allowance
+
+  const needW = (W, CG) => 7*(W + cardBorder) + 6*CG;
+  const pileH = (N, H, G) => H + (N - 1) * G;
+
+  // Compute a single scale factor that satisfies both width and height.
+  const targetNeedW = needW(baseW, baseColGap);
+  const targetNeedH = pileH(maxLen, baseH, baseGap);
+
+  // Avoid division by zero in pathological cases.
+  const sW = targetNeedW ? (availW / targetNeedW) : 1;
+  const sH = targetNeedH ? (availH / targetNeedH) : 1;
+  const s = Math.min(1, sW, sH);
+
+  // Clamp for usability (phone → desktop).
+  const w = Math.round(Math.min(120, Math.max(34, baseW * s)));
+  const h = Math.round(w * 1.45);
+  let g = Math.round(Math.min(36, Math.max(14, baseGap * s)));
+  // Extra vertical separation on narrow screens so ranks/suits remain readable.
+  if (window.innerWidth <= 520) {
+    g = Math.round(Math.min(44, Math.max(18, baseGap * s * 1.25)));
+  }
+  const cg = Math.round(Math.min(12, Math.max(2, baseColGap * s)));
+
+  document.documentElement.style.setProperty('--card-w', w + "px");
+  document.documentElement.style.setProperty('--card-h', h + "px");
+  document.documentElement.style.setProperty('--stack-gap', g + "px");
+  document.documentElement.style.setProperty('--col-gap', cg + "px");
+}
+
+
+let fitRaf = 0;
+function scheduleFit(){
+  if(fitRaf) return;
+  fitRaf = requestAnimationFrame(() => {
+    fitRaf = 0;
+    fit();
+    render();
+  });
+}
+document.getElementById("newGameBtn").onclick = start;
+document.getElementById("undoBtn").onclick = undo;
+document.getElementById("autoBtn").onclick = autoPlay;
+document.getElementById("giveUpBtn").onclick = () => { document.getElementById('modalLose').classList.add('active'); };
+window.addEventListener('resize', scheduleFit, {passive:true});
+window.addEventListener('orientationchange', scheduleFit, {passive:true});
+if(window.visualViewport){
+  visualViewport.addEventListener('resize', scheduleFit, {passive:true});
+  visualViewport.addEventListener('scroll', scheduleFit, {passive:true});
+}
+// Re-fit if the app container changes size (e.g., address bar show/hide)
+try {
+  const ro = new ResizeObserver(() => scheduleFit());
+  ro.observe(document.body);
+} catch(e) {}
+
+boot();
+
+initSuitStyleUI();
+
+// Rules modal behavior
+document.addEventListener('DOMContentLoaded', () => {
+  const rulesBtn = document.getElementById('rulesBtn');
+  const modal = document.getElementById('rulesModal');
+  const closeBtn = document.getElementById('closeRulesBtn');
+
+  if(rulesBtn && modal){
+    rulesBtn.addEventListener('click', () => modal.classList.remove('hidden'));
+  }
+  if(closeBtn && modal){
+    closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
+  }
+  if(modal){
+    modal.addEventListener('click', (e) => {
+      if(e.target === modal) modal.classList.add('hidden');
+    });
+  }
+});
+
+</script>
+
+<!-- Rules Modal -->
+<div id="rulesModal" class="rules-modal hidden">
+  <div class="rules-content">
+    
+    <h2>How to Play</h2>
+
+    <h3>Goal</h3>
+    <p>Move all cards to the <b>Foundations</b>, building each suit from <b>Ace → King</b>.</p>
+
+    <h3>Tableau (Main Columns)</h3>
+    <p>Cards build <b>down by suit</b>.</p>
+    <p><b>Examples:</b></p>
+    <ul class="examples">
+      <li><code>9♠ → 8♠ → 7♠</code></li>
+      <li><code>Q♥ → J♥ → 10♥</code></li>
+      <li><code>5♦ → 4♦ → 3♦</code></li>
+    </ul>
+
+    <p><b>You may move:</b></p>
+    <ul>
+      <li>A single card</li>
+      <li>Or a card <b>with all cards stacked beneath it</b>, as long as they are in correct order (same suit, descending by 1)</li>
+    </ul>
+
+    <p>When you move a card, you must move <b>every card below it</b> in that stack.</p>
+
+    <p><b>Empty columns</b> may only be filled with:</p>
+    <ul>
+      <li>A <b>King</b></li>
+      <li>Or a correctly ordered stack that begins with a King</li>
+    </ul>
+
+    <h3>Foundations</h3>
+    <p>Foundations build <b>up by suit</b>:</p>
+    <p><code>A♣ → 2♣ → 3♣ → … → K♣</code></p>
+    <p>Only Aces may start a foundation.</p>
+
+    <h3>Cells</h3>
+    <p>Each cell can hold <b>one card</b>.</p>
+    <p>Cards in cells may move to the tableau or to foundations if the move is valid.</p>
+
+    <h3>Win</h3>
+    <p>You win when all cards are in the foundations.</p>
+
+    <button id="closeRulesBtn">Close</button>
+  </div>
+</div>
+
+</body>
+</html>
