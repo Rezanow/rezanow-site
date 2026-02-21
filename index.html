@@ -389,6 +389,30 @@ header .controls > *{ flex: 0 0 auto; }
   font-weight: bold;
 }
 
+
+/* Rules modal formatting */
+.rules-content{
+  max-height: min(80vh, 620px);
+  overflow: auto;
+}
+.rules-content h2{ margin: 0 0 10px; }
+.rules-content h3{
+  margin: 14px 0 6px;
+  font-size: 14px;
+}
+.rules-content p{
+  margin: 6px 0;
+  line-height: 1.35;
+}
+.rules-content ul{ margin: 6px 0 8px 18px; }
+.rules-content ul.examples{ margin-top: 4px; }
+.rules-content code{
+  background: rgba(0,0,0,0.06);
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-weight: 700;
+}
+
 </style>
 </head>
 <body class="suit-style-normal">
@@ -1124,14 +1148,47 @@ document.addEventListener('DOMContentLoaded', () => {
 <!-- Rules Modal -->
 <div id="rulesModal" class="rules-modal hidden">
   <div class="rules-content">
+    
     <h2>How to Play</h2>
-    <ul>
-      <li>Build tableau columns down by suit (e.g., 7♠ on 8♠).</li>
-      <li>Move sequences if they follow descending order in the same suit.</li>
-      <li>Foundations build up by suit from Ace to King.</li>
-      <li>Only Kings (or valid sequences starting with King) may move to empty tableau columns.</li>
-      <li>Win by moving all cards to the foundations.</li>
+
+    <h3>Goal</h3>
+    <p>Move all cards to the <b>Foundations</b>, building each suit from <b>Ace → King</b>.</p>
+
+    <h3>Tableau (Main Columns)</h3>
+    <p>Cards build <b>down by suit</b>.</p>
+    <p><b>Examples:</b></p>
+    <ul class="examples">
+      <li><code>9♠ → 8♠ → 7♠</code></li>
+      <li><code>Q♥ → J♥ → 10♥</code></li>
+      <li><code>5♦ → 4♦ → 3♦</code></li>
     </ul>
+
+    <p><b>You may move:</b></p>
+    <ul>
+      <li>A single card</li>
+      <li>Or a card <b>with all cards stacked beneath it</b>, as long as they are in correct order (same suit, descending by 1)</li>
+    </ul>
+
+    <p>When you move a card, you must move <b>every card below it</b> in that stack.</p>
+
+    <p><b>Empty columns</b> may only be filled with:</p>
+    <ul>
+      <li>A <b>King</b></li>
+      <li>Or a correctly ordered stack that begins with a King</li>
+    </ul>
+
+    <h3>Foundations</h3>
+    <p>Foundations build <b>up by suit</b>:</p>
+    <p><code>A♣ → 2♣ → 3♣ → … → K♣</code></p>
+    <p>Only Aces may start a foundation.</p>
+
+    <h3>Cells</h3>
+    <p>Each cell can hold <b>one card</b>.</p>
+    <p>Cards in cells may move to the tableau or to foundations if the move is valid.</p>
+
+    <h3>Win</h3>
+    <p>You win when all cards are in the foundations.</p>
+
     <button id="closeRulesBtn">Close</button>
   </div>
 </div>
