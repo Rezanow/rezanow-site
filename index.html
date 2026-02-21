@@ -1541,7 +1541,7 @@ document.getElementById("newGameBtn").onclick = start;
 document.getElementById("undoBtn").onclick = undo;
 document.getElementById("autoBtn").onclick = autoPlay;
 document.getElementById("giveUpBtn").onclick = () => {
-  if(canFinalizeLoss()) recordGameResult('loss');
+  if(hasActiveRunToRecordAsLoss() && !runResultRecorded) recordGameResult('loss');
   document.getElementById('modalLose').classList.add('active');
 };
 document.getElementById("statsBtn").onclick = () => {
