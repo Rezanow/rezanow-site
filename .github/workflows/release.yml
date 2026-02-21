@@ -19,6 +19,18 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Ensure semantic version baseline tag exists on main
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --force --tags origin main
+
+          if ! git tag --merged origin/main --list 'v*' | grep -q .; then
+            echo "::error::No v* tag found on main. Create initial tag v0.1.0 to establish semantic baseline."
+            exit 1
+          fi
+
       - name: Validate commit messages
         uses: wagoid/commitlint-github-action@v6
         with:
