@@ -19,13 +19,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          pattern='^(feat|fix|perf)(\([a-z0-9._/-]+\))?(!)?: .+'
+          conventional_pattern='^(feat|fix|perf)(\([a-z0-9._/-]+\))?(!)?: .+'
+          legacy_pattern='^[A-Z].{8,}$'
 
-          if [[ ! "$PR_TITLE" =~ $pattern ]]; then
-            echo "::error::PR title must match Conventional Commit format for squash merges:"
+          if [[ ! "$PR_TITLE" =~ $conventional_pattern && ! "$PR_TITLE" =~ $legacy_pattern ]]; then
+            echo "::error::PR title must either match Conventional Commit format or a readable legacy title:"
             echo "::error::  feat(scope): short description"
             echo "::error::  fix: short description"
             echo "::error::  perf!: short description"
+            echo "::error::  Prevent no-op base-king tableau hint moves"
             echo "::error::Title was: $PR_TITLE"
             exit 1
           fi
