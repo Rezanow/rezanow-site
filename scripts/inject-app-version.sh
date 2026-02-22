@@ -4,6 +4,14 @@ set -euo pipefail
 TARGET_FILE="${1:-index.html}"
 MODE="${2:-inject}"
 PLACEHOLDER="__APP_VERSION__"
+REQUIRE_VERSION_TAG="${REQUIRE_VERSION_TAG:-false}"
+
+is_truthy() {
+  case "${1,,}" in
+    1|true|yes|on) return 0 ;;
+    *) return 1 ;;
+  esac
+}
 
 resolve_version() {
   # Precedence:
@@ -39,6 +47,11 @@ resolve_version() {
     fi
   fi
   if [[ -z "${version_base}" ]]; then
+    if is_truthy "${REQUIRE_VERSION_TAG}"; then
+      echo "ERROR: No reachable version tag matching 'v*' (or legacy numeric tags) was found, and REQUIRE_VERSION_TAG=true disallows fallback to v0.0.0." >&2
+      return 1
+    fi
+
     version_base="v0.0.0"
   fi
 
