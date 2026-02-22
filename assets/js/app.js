@@ -101,6 +101,24 @@ let doubleClickToFoundationEnabled=true;
 
 const MAX_PERSISTED_HISTORY = 150;
 
+function isValidCard(card){
+  return !!card &&
+    typeof card === 'object' &&
+    suits.includes(card.suit) &&
+    ranks.includes(card.rank) &&
+    Number.isFinite(card.value) &&
+    card.value >= 1 && card.value <= 13 &&
+    typeof card.faceUp === 'boolean';
+}
+
+function clearPersistedGameState(){
+  try { localStorage.removeItem(GAME_STATE_KEY); } catch(e) {}
+}
+
+function isValidPile(pile){
+  return Array.isArray(pile) && pile.every(isValidCard);
+}
+
 function persistGameState(){
   const persistedHistory = historyStack.slice(-MAX_PERSISTED_HISTORY);
   const snapshot = {
@@ -131,8 +149,18 @@ function loadPersistedGameState(){
     const raw = localStorage.getItem(GAME_STATE_KEY);
     if(!raw) return false;
     const parsed = JSON.parse(raw);
-    if(!parsed || !Array.isArray(parsed.tableau) || !Array.isArray(parsed.foundations) || !Array.isArray(parsed.hand)) return false;
-    if(parsed.tableau.length !== 7 || parsed.foundations.length !== 4 || parsed.hand.length !== 3) return false;
+    if(!parsed || !Array.isArray(parsed.tableau) || !Array.isArray(parsed.foundations) || !Array.isArray(parsed.hand)){
+      clearPersistedGameState();
+      return false;
+    }
+    if(parsed.tableau.length !== 7 || parsed.foundations.length !== 4 || parsed.hand.length !== 3){
+      clearPersistedGameState();
+      return false;
+    }
+    if(!parsed.tableau.every(isValidPile) || !parsed.foundations.every(isValidPile) || !parsed.hand.every(card => card === null || isValidCard(card))){
+      clearPersistedGameState();
+      return false;
+    }
 
     tableau = parsed.tableau;
     foundations = parsed.foundations;
@@ -146,6 +174,7 @@ function loadPersistedGameState(){
     selected = null;
     return true;
   } catch(e){
+    clearPersistedGameState();
     return false;
   }
 }
@@ -861,6 +890,10 @@ function cardClick(type, idx, cardIdx){
 function createCardEl(c, type, idx, cardIdx){
   const el = document.createElement("div");
   el.className = "card";
+  if(!isValidCard(c)){
+    el.classList.add("back");
+    return el;
+  }
   if(!c.faceUp){ el.classList.add("back"); return el; }
   el.classList.add("face");
   const sc = suitClass[c.suit];
@@ -904,7 +937,8 @@ function render(){
     slot.ondragover = handleDragOver; slot.ondragenter = handleDragEnter;
     slot.ondragleave = handleDragLeave; slot.ondrop = (e) => handleDrop(e, 'hand', i);
     slot.onclick = () => cardClick('hand', i);
-    if(hand[i]) slot.appendChild(createCardEl(hand[i], 'hand', i));
+    const card = isValidCard(hand[i]) ? hand[i] : null;
+    if(card) slot.appendChild(createCardEl(card, 'hand', i));
   });
   document.querySelectorAll('.foundation').forEach(found => {
     found.innerHTML = "";
@@ -912,9 +946,10 @@ function render(){
     found.ondragover = handleDragOver; found.ondragenter = handleDragEnter;
     found.ondragleave = handleDragLeave; found.ondrop = (e) => handleDrop(e, 'foundation', i);
     found.onclick = () => cardClick('foundation', i);
-    const p = foundations[i];
-    if(p.length){
-      const el = createCardEl(p[p.length-1], 'foundation', i, p.length-1);
+    const p = Array.isArray(foundations[i]) ? foundations[i] : [];
+    const top = p.length ? p[p.length-1] : null;
+    if(isValidCard(top)){
+      const el = createCardEl(top, 'foundation', i, p.length-1);
       el.draggable = false; el.onclick = null; el.ontouchstart=null;
       found.appendChild(el);
     }
@@ -929,10 +964,11 @@ function render(){
         else executeHandToPile(selected.idx, i);
         selected=null; render();
     }};
-    const stack = tableau[i];
+    const stack = Array.isArray(tableau[i]) ? tableau[i] : [];
+    const safeStack = stack.filter(isValidCard);
     let ch = parseInt(computedStyle.getPropertyValue('--card-h').trim()) || 116;
-    pile.style.height = (ch + (stack.length-1)*gap) + "px";
-    stack.forEach((c, j) => {
+    pile.style.height = (ch + (safeStack.length-1)*gap) + "px";
+    safeStack.forEach((c, j) => {
       const el = createCardEl(c, 'pile', i, j);
       el.style.top = (j * gap) + "px";
       pile.appendChild(el);
@@ -954,7 +990,7 @@ function fit(){
     document.documentElement.style.setProperty('--header-h', hh + "px");
   }
 
-  const maxLen = Math.max(...tableau.map(p=>p.length || 1));
+  const maxLen = Math.max(...tableau.map(p => (Array.isArray(p) ? (p.length || 1) : 1)));
 
   // "Design" dimensions (desktop-ish baseline), then scale down as needed.
   const baseW = 84;            // card width
@@ -1152,4 +1188,3 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
-
