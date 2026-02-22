@@ -1520,6 +1520,8 @@ function createCardEl(c, type, idx, cardIdx){
       selected = null;
       render();
       checkGameState();
+    } else {
+      cardClick(type, idx, cardIdx);
     }
   };
   el.innerHTML = `<div class="val-tl">${c.rank}</div><div class="suit-tr">${c.suit}</div><div class="val-center">${c.rank}</div>`;
