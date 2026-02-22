@@ -1620,6 +1620,16 @@ document.addEventListener('keydown', (event) => {
   menuToggleBtn?.focus();
 });
 
+['newGameBtn', 'undoBtn', 'autoBtn', 'giveUpBtn'].forEach((id) => {
+  const actionBtn = document.getElementById(id);
+  if(!actionBtn) return;
+  actionBtn.addEventListener('click', () => {
+    if(mobileMenuQuery.matches){
+      setMenuOpen(false);
+    }
+  });
+});
+
 syncMenuForViewport();
 mobileMenuQuery.addEventListener('change', syncMenuForViewport);
 
