@@ -890,6 +890,10 @@ function cardClick(type, idx, cardIdx){
 function createCardEl(c, type, idx, cardIdx){
   const el = document.createElement("div");
   el.className = "card";
+  if(!isValidCard(c)){
+    el.classList.add("back");
+    return el;
+  }
   if(!c.faceUp){ el.classList.add("back"); return el; }
   el.classList.add("face");
   const sc = suitClass[c.suit];
@@ -961,8 +965,8 @@ function render(){
     }};
     const stack = Array.isArray(tableau[i]) ? tableau[i] : [];
     let ch = parseInt(computedStyle.getPropertyValue('--card-h').trim()) || 116;
-    pile.style.height = (ch + (stack.length-1)*gap) + "px";
-    stack.forEach((c, j) => {
+    pile.style.height = (ch + (safeStack.length-1)*gap) + "px";
+    safeStack.forEach((c, j) => {
       const el = createCardEl(c, 'pile', i, j);
       el.style.top = (j * gap) + "px";
       pile.appendChild(el);
@@ -984,7 +988,7 @@ function fit(){
     document.documentElement.style.setProperty('--header-h', hh + "px");
   }
 
-  const maxLen = Math.max(...tableau.map(p=>p.length || 1));
+  const maxLen = Math.max(...tableau.map(p => (Array.isArray(p) ? (p.length || 1) : 1)));
 
   // "Design" dimensions (desktop-ish baseline), then scale down as needed.
   const baseW = 84;            // card width
