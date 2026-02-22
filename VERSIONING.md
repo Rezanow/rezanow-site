@@ -60,6 +60,25 @@ CI release automation is configured to:
 3. Create/update Git tag and GitHub release.
 4. Export the resolved version string to the build-injection step that stamps the footer version placeholder in `index.html`.
 
+> **Important:** Semantic version bumps (tag/release creation) are performed **only** by the GitHub Actions workflow at `.github/workflows/release.yml`, in the `release` job, and only on `push` events to `main` (`if: github.event_name == 'push' && github.ref == 'refs/heads/main'`).
+
+## Why my PR didn’t bump version
+
+If your pull request did not create a new version tag or GitHub Release, this is expected behavior in most cases:
+
+1. **PRs themselves do not create tags/releases.**
+   The `release` job is gated to run only after changes are merged and pushed to `main`, not on `pull_request` events.
+2. **Version increments are computed after merge on `main`.**
+   Release automation evaluates Conventional Commits from the merged history on `main` and then calculates the next semantic version.
+3. **Merge strategy and commit format still matter.**
+   Use a merge approach that preserves Conventional Commit messages in `main` history (for example, squash commit title/body or individual commits) and ensure commit messages satisfy the required format:
+
+   ```text
+   <type>(optional-scope): <short description>
+   ```
+
+   Release-driving types remain `feat` (MINOR), `fix`/`perf` (PATCH), and any breaking change marker (`!` or `BREAKING CHANGE:`) for MAJOR.
+
 ## Fallback for Non-Release Branches
 
 For branches that are not configured for official releases, CI injects a development version string:
