@@ -1058,6 +1058,21 @@ function moveCardToAnyFoundation(type, idx, cardIdx){
   return false;
 }
 
+function moveCardToAnyTableau(type, idx, cardIdx){
+  if(type === 'pile'){
+    for(let t=0; t<7; t++){
+      if(executePileToPile(idx, cardIdx, t)) return true;
+    }
+    return false;
+  }
+  if(type === 'hand'){
+    for(let t=0; t<7; t++){
+      if(executeHandToPile(idx, t)) return true;
+    }
+  }
+  return false;
+}
+
 function hasActiveRunToRecordAsLoss(){
   if(gameFinished) return false;
   if(moveCount > 0 || undoCount > 0 || elapsedMs > 0) return true;
@@ -1344,11 +1359,18 @@ function handleTouchEnd(e){
       lastTap.cardIdx === dragSource.cardIdx &&
       (now - lastTap.ts) <= DOUBLE_TAP_WINDOW_MS;
 
-    if(isDoubleTap && moveCardToAnyFoundation(dragSource.type, dragSource.idx, dragSource.cardIdx)){
-      selected = null;
-      render();
-      checkGameState();
-      lastTap = { ts: 0, type: null, idx: null, cardIdx: null };
+    if(isDoubleTap){
+      const movedToFoundation = moveCardToAnyFoundation(dragSource.type, dragSource.idx, dragSource.cardIdx);
+      const movedToTableau = movedToFoundation ? false : moveCardToAnyTableau(dragSource.type, dragSource.idx, dragSource.cardIdx);
+      if(movedToFoundation || movedToTableau){
+        selected = null;
+        render();
+        checkGameState();
+        lastTap = { ts: 0, type: null, idx: null, cardIdx: null };
+      } else {
+        cardClick(dragSource.type, dragSource.idx, dragSource.cardIdx);
+        lastTap = { ts: now, type: dragSource.type, idx: dragSource.idx, cardIdx: dragSource.cardIdx };
+      }
     } else {
       cardClick(dragSource.type, dragSource.idx, dragSource.cardIdx);
       lastTap = { ts: now, type: dragSource.type, idx: dragSource.idx, cardIdx: dragSource.cardIdx };
@@ -1452,10 +1474,14 @@ function createCardEl(c, type, idx, cardIdx){
   el.ondblclick = (e) => {
     e.stopPropagation();
     if(!doubleClickToFoundationEnabled) return;
-    if(moveCardToAnyFoundation(type, idx, cardIdx)){
+    const movedToFoundation = moveCardToAnyFoundation(type, idx, cardIdx);
+    const movedToTableau = movedToFoundation ? false : moveCardToAnyTableau(type, idx, cardIdx);
+    if(movedToFoundation || movedToTableau){
       selected = null;
       render();
       checkGameState();
+    } else {
+      cardClick(type, idx, cardIdx);
     }
   };
   el.innerHTML = `<div class="val-tl">${c.rank}</div><div class="suit-tr">${c.suit}</div><div class="val-center">${c.rank}</div>`;
