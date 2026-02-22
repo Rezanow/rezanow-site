@@ -1058,6 +1058,47 @@ function moveCardToAnyFoundation(type, idx, cardIdx){
   return false;
 }
 
+function moveCardToAnyTableau(type, idx, cardIdx){
+  let movingCard;
+  if(type === 'pile'){
+    if(cardIdx !== tableau[idx].length - 1) return false;
+    movingCard = tableau[idx][cardIdx];
+  } else if(type === 'hand'){
+    movingCard = hand[idx];
+    if(!movingCard) return false;
+  } else {
+    return false;
+  }
+
+  // Deterministic target selection policy:
+  // 1) Prefer non-empty tableau piles where canTableau(movingCard, topCard) is valid.
+  // 2) Only if none exist, allow moving a King to an empty tableau pile.
+  // 3) In either case, choose the leftmost valid tableau index.
+  let targetIdx = -1;
+  for(let t=0; t<7; t++){
+    if(type === 'pile' && t === idx) continue;
+    const targetPile = tableau[t];
+    if(targetPile.length && canTableau(movingCard, targetPile[targetPile.length-1])){
+      targetIdx = t;
+      break;
+    }
+  }
+
+  if(targetIdx === -1 && movingCard.rank === 'K'){
+    for(let t=0; t<7; t++){
+      if(type === 'pile' && t === idx) continue;
+      if(!tableau[t].length){
+        targetIdx = t;
+        break;
+      }
+    }
+  }
+
+  if(targetIdx === -1) return false;
+  if(type === 'pile') return executePileToPile(idx, cardIdx, targetIdx);
+  return executeHandToPile(idx, targetIdx);
+}
+
 function hasActiveRunToRecordAsLoss(){
   if(gameFinished) return false;
   if(moveCount > 0 || undoCount > 0 || elapsedMs > 0) return true;
