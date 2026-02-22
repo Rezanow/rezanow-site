@@ -27,6 +27,18 @@ Examples:
 - Updating labels, copy, spacing, or visual polish.
 - Optimizing render or interaction performance without behavior breakage.
 
+## Main Branch Merge Policy
+
+To keep every commit that lands on `main` parseable by release automation:
+
+1. **Use squash merge only** for pull requests targeting `main`.
+2. PR titles must use Conventional Commits and start with one of:
+   - `feat: ...` or `feat(scope): ...`
+   - `fix: ...` or `fix(scope): ...`
+   - `perf: ...` or `perf(scope): ...`
+   - Any of the above may include `!` for breaking changes, e.g. `feat!: ...` or `fix(api)!: ...`
+3. CI validates this PR-title policy in `.github/workflows/pr-title-conventional.yml`.
+
 ## Commit Message Convention (Required)
 
 All commits must follow the Conventional Commits format:
@@ -43,9 +55,12 @@ Examples:
 
 ### Supported release-driving commit types
 
+Accepted release-driving types are:
+
 - `feat`: triggers a **MINOR** release.
-- `fix` / `perf`: trigger a **PATCH** release.
-- `feat!` / `fix!` / any type with `!`, or footer `BREAKING CHANGE:`: triggers a **MAJOR** release.
+- `fix`: triggers a **PATCH** release.
+- `perf`: triggers a **PATCH** release.
+- Any accepted type marked as breaking with `!` (for example `feat!`, `fix!`, `perf!`) or with footer `BREAKING CHANGE:` triggers a **MAJOR** release.
 
 ### Non-release commit types
 
