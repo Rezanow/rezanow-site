@@ -1143,27 +1143,37 @@ function findAnyMove(highlight){
     }
   }
   // 4. Pile -> Tableau (Deep moves allowed)
-  for(let i=0; i<7; i++){
-    const p = tableau[i];
-    for(let j=0; j<p.length; j++){
-      if(!p[j].faceUp) continue;
-      const c = p[j];
-      for(let t=0; t<7; t++){
-        if(i===t) continue;
-        const tp = tableau[t];
-        if(!tp.length){ 
-           if(c.rank==='K' && j>0){ // Don't move King from base to empty
-             if(highlight) { highlightPileCard(i,j,'source'); highlightPile(t,'target'); }
-             return true; 
-           } 
-        }
-        else if(canTableau(c, tp[tp.length-1])){ 
-           if(highlight) { highlightPileCard(i,j,'source'); highlightPileCard(t, tp.length-1, 'target'); }
-           return true; 
+  // Prefer stronger progress first; if none exist, allow king-to-empty fallback moves.
+  const findPileToTableauMove = (allowBaseKingToEmpty) => {
+    for(let i=0; i<7; i++){
+      const p = tableau[i];
+      for(let j=0; j<p.length; j++){
+        if(!p[j].faceUp) continue;
+        const c = p[j];
+        for(let t=0; t<7; t++){
+          if(i===t) continue;
+          const tp = tableau[t];
+          if(!tp.length){
+            const movingKingToEmpty = c.rank === 'K' && (allowBaseKingToEmpty || j > 0);
+            if(movingKingToEmpty){
+              if(highlight) { highlightPileCard(i,j,'source'); highlightPile(t,'target'); }
+              return true;
+            }
+          }
+          else if(canTableau(c, tp[tp.length-1])){
+            if(highlight) { highlightPileCard(i,j,'source'); highlightPileCard(t, tp.length-1, 'target'); }
+            return true;
+          }
         }
       }
     }
-  }
+    return false;
+  };
+
+  // Pass 1: stronger progress only (no base king -> empty pile moves).
+  if(findPileToTableauMove(false)) return true;
+  // Pass 2: fallback includes any legal king-led run to empty, including j === 0.
+  if(findPileToTableauMove(true)) return true;
   // 5. Pile Top -> Hand (Only if Hand slot empty)
   for(let h=0; h<3; h++){
       if(!hand[h]){
