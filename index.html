@@ -730,6 +730,7 @@ let undoCount=0;
 let elapsedMs=0;
 let timerInterval=null;
 let lastTickTs=Date.now();
+let timerActive=false;
 let gameFinished=false;
 let runResultRecorded=false;
 let doubleClickToFoundationEnabled=true;
@@ -804,9 +805,9 @@ function updateRunStatsUI(){
 
 function startTimer(){
   if(timerInterval) clearInterval(timerInterval);
-  lastTickTs = Date.now();
+  syncTimerPresence();
   timerInterval = setInterval(() => {
-    if(gameFinished) return;
+    if(!timerActive || gameFinished) return;
     const now = Date.now();
     elapsedMs += now - lastTickTs;
     lastTickTs = now;
@@ -815,12 +816,34 @@ function startTimer(){
   }, 1000);
 }
 
+function isPlayerPresent(){
+  return !document.hidden && document.hasFocus();
+}
+
+function syncTimerPresence(){
+  const shouldBeActive = !gameFinished && isPlayerPresent();
+  if(shouldBeActive){
+    lastTickTs = Date.now();
+    timerActive = true;
+    return;
+  }
+
+  if(timerActive){
+    const now = Date.now();
+    elapsedMs += Math.max(0, now - lastTickTs);
+    timerActive = false;
+    updateRunStatsUI();
+    persistGameState();
+  }
+}
+
 function resetRunStats(){
   moveCount = 0;
   undoCount = 0;
   elapsedMs = 0;
   gameFinished = false;
   runResultRecorded = false;
+  timerActive = false;
   lastTickTs = Date.now();
   updateRunStatsUI();
 }
@@ -842,6 +865,7 @@ function saveStatsHistory(history){
 
 function recordGameResult(outcome){
   if(gameFinished || runResultRecorded) return;
+  syncTimerPresence();
   gameFinished = true;
   runResultRecorded = true;
   const history = loadStatsHistory();
@@ -1642,6 +1666,10 @@ document.addEventListener('keydown', (event) => {
 
 syncMenuForViewport();
 mobileMenuQuery.addEventListener('change', syncMenuForViewport);
+
+window.addEventListener('focus', syncTimerPresence);
+window.addEventListener('blur', syncTimerPresence);
+document.addEventListener('visibilitychange', syncTimerPresence);
 
 // Rules modal behavior
 document.addEventListener('DOMContentLoaded', () => {
