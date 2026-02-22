@@ -1,0 +1,35 @@
+name: PR title policy
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  conventional-pr-title:
+    name: conventional-pr-title
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate PR title for squash-merge commit message
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          pattern='^(feat|fix|perf)(\([a-z0-9._/-]+\))?(!)?: .+'
+
+          if [[ ! "$PR_TITLE" =~ $pattern ]]; then
+            echo "::error::PR title must match Conventional Commit format for squash merges:"
+            echo "::error::  feat(scope): short description"
+            echo "::error::  fix: short description"
+            echo "::error::  perf!: short description"
+            echo "::error::Title was: $PR_TITLE"
+            exit 1
+          fi
+
+      - name: Explain enforced merge policy
+        run: |
+          echo "PR title is valid for squash merge commit generation on main."
