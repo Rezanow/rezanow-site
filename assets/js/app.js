@@ -947,9 +947,8 @@ function render(){
     found.ondragleave = handleDragLeave; found.ondrop = (e) => handleDrop(e, 'foundation', i);
     found.onclick = () => cardClick('foundation', i);
     const p = Array.isArray(foundations[i]) ? foundations[i] : [];
-    const top = p.length ? p[p.length-1] : null;
-    if(isValidCard(top)){
-      const el = createCardEl(top, 'foundation', i, p.length-1);
+    if(p.length){
+      const el = createCardEl(p[p.length-1], 'foundation', i, p.length-1);
       el.draggable = false; el.onclick = null; el.ontouchstart=null;
       found.appendChild(el);
     }
@@ -965,7 +964,6 @@ function render(){
         selected=null; render();
     }};
     const stack = Array.isArray(tableau[i]) ? tableau[i] : [];
-    const safeStack = stack.filter(isValidCard);
     let ch = parseInt(computedStyle.getPropertyValue('--card-h').trim()) || 116;
     pile.style.height = (ch + (safeStack.length-1)*gap) + "px";
     safeStack.forEach((c, j) => {
