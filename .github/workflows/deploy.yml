@@ -40,8 +40,9 @@ jobs:
       - name: Guard: require reachable version tag
         run: |
           set -euo pipefail
-          if ! git describe --tags --abbrev=0 --match 'v*' >/dev/null 2>&1; then
-            echo "::error::No reachable version tag matching 'v*' found for production deploy. Create/fetch a version tag before deploying from main."
+          if ! git describe --tags --abbrev=0 --match 'v*' >/dev/null 2>&1 \
+            && ! git describe --tags --abbrev=0 --match '[0-9]*' >/dev/null 2>&1; then
+            echo "::error::No reachable version tag matching 'v*' (or legacy numeric tags) found for production deploy. Create/fetch a version tag before deploying from main."
             exit 1
           fi
 
