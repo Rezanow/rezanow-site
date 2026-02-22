@@ -1,639 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-  <!-- This is a comment -->
-<head>
-  <meta charset="UTF-8" />
-  <title>Build-By-Suit Solitaire</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <style>
-    :root{
-      --header-h: 44px;
-      --safe-top: env(safe-area-inset-top, 0px);
-      --safe-bottom: env(safe-area-inset-bottom, 0px);
-      --safe-left: env(safe-area-inset-left, 0px);
-      --safe-right: env(safe-area-inset-right, 0px);
-
-      --card-w: 80px;
-      --card-h: 116px;
-      --stack-gap: 24px;
-      --col-gap: 8px;
-      --radius: 6px;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      background: #205c36;
-      color: #fff;
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      overflow: hidden;
-      height: 100vh; width: 100vw;
-      height: 100dvh;
-      display: flex;
-      flex-direction: column;
-      user-select: none;
-      -webkit-user-select: none;
-      touch-action: none;
-    }
-    header {
-      flex-shrink: 0; 
-      display:flex; justify-content:space-between; align-items:center; 
-      padding: calc(6px + var(--safe-top)) calc(12px + var(--safe-right)) 6px calc(12px + var(--safe-left));
-      background: rgba(0,0,0,0.25);
-}
-    header h1 { margin: 0; font-weight: 700; font-size: 16px; letter-spacing: 0.5px;}
-
-    .controls { display:flex; gap:8px; }
-    #menuToggle {
-      display: none;
-      background: #e0e0e0;
-      color: #222;
-      min-width: 40px;
-      padding: 6px 10px;
-      font-size: 18px;
-      line-height: 1;
-    }
-    button {
-      border: none; border-radius: 4px; padding: 6px 12px; 
-      font-weight: 600; font-size: 12px; cursor: pointer;
-      background: #e0e0e0; color: #333; box-shadow: 0 2px 2px rgba(0,0,0,0.2);
-    }
-    button:active { transform: translateY(1px); }
-    button#autoBtn { background: #ffda2b; color: #000; }
-    button#hintBtn { background: #e1bee7; color: #4a148c; }
-    button#giveUpBtn { background: #ef9a9a; color: #b71c1c; }
-
-    #menuToggle:focus-visible,
-    .controls button:focus-visible,
-    .controls select:focus-visible,
-    .controls input:focus-visible {
-      outline: 3px solid #ffda2b;
-      outline-offset: 2px;
-    }
-
-    .app {
-      flex: 1 1 auto;
-      min-height: 0;
- 
-      display: flex; flex-direction: column; 
-      padding: 8px calc(4px + var(--safe-right)) calc(28px + var(--safe-bottom)) calc(4px + var(--safe-left));
-width: 100%;
-    }
-
-    .app-version {
-      position: fixed;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      padding: 2px calc(8px + var(--safe-right)) calc(2px + var(--safe-bottom)) calc(8px + var(--safe-left));
-      font-size: 11px;
-      line-height: 1.2;
-      opacity: 0.65;
-      text-align: center;
-      pointer-events: none;
-      background: linear-gradient(to top, rgba(0, 0, 0, 0.24), rgba(0, 0, 0, 0));
-      z-index: 20;
-    }
-    
-    .top-section { 
-      display: flex; justify-content: center; gap: 12px; 
-      margin-bottom: 8px; flex-shrink: 0;
-    }
-    .zone-title { 
-      text-align:center; font-size: 9px; text-transform: uppercase; 
-      opacity: .5; margin-bottom: 2px;
-    }
-
-    .foundations-row, .hand-row { display:flex; gap: 4px; }
-    
-    .zone-tableau {
-        flex-grow: 1; position: relative;
-    }
-
-    .tableau-row { 
-      display:flex; gap: var(--col-gap); justify-content:center; 
-      height: 100%; padding-top: 4px;
-    }
-
-    .pile, .foundation, .hand-slot {
-      width: var(--card-w);
-      min-height: var(--card-h);
-      border: 1px solid rgba(255,255,255,0.2);
-      border-radius: var(--radius);
-      position: relative;
-      background: rgba(0,0,0,0.1);
-      transition: width 0.1s, height 0.1s;
-    }
-    
-    /* Card Styles */
-    .card {
-      position: absolute;
-      width: var(--card-w); height: var(--card-h);
-      border-radius: var(--radius);
-      background: #fdfbf7;
-      box-shadow: 1px 1px 3px rgba(0,0,0,0.4);
-      cursor: grab;
-      border: 1px solid #bbb;
-      z-index: 10;
-      transition: transform 0.1s;
-    }
-    .card:active { transform: scale(0.96); }
-    .card.back {
-      background: repeating-linear-gradient(45deg, #1a237e, #1a237e 5px, #283593 5px, #283593 10px);
-      border: 1px solid #eee;
-    }
-    
-    .val-tl { 
-      position: absolute; top: 4px; left: 6px; 
-      font-size: clamp(14px, calc(var(--card-w) * 0.25), 20px); 
-      font-weight: 700; line-height: 1;
-    }
-    .suit-tr { 
-      position: absolute; top: 4px; right: 6px; 
-      font-size: clamp(14px, calc(var(--card-w) * 0.25), 20px); 
-      line-height: 1;
-    }
-    .val-center { 
-      position: absolute; top: 55%; left: 50%; 
-      transform: translate(-50%, -50%); 
-      font-size: calc(var(--card-w) * 0.7); 
-      font-weight: 800;
-      letter-spacing: -2px;
-      opacity: 1; 
-      pointer-events: none;
-    }
-    
-    .card.dragging { opacity: 0; } 
-    .drag-over { background: rgba(255, 218, 43, 0.4); border-color: #ffda2b; box-shadow: 0 0 8px #ffda2b; }
-    .selected { outline: 3px solid #ffda2b; z-index: 100 !important; }
-
-    @keyframes pulse-pink {
-      0% { box-shadow: 0 0 0 0 rgba(236, 64, 122, 0.7); border-color: #ec407a; }
-      70% { box-shadow: 0 0 0 10px rgba(236, 64, 122, 0); border-color: #ec407a; }
-      100% { box-shadow: 0 0 0 0 rgba(236, 64, 122, 0); border-color: #ec407a; }
-    }
-    .hint-source { animation: pulse-pink 1.5s infinite; z-index: 1000 !important; }
-    .hint-target { border: 2px solid #ec407a; background: rgba(236, 64, 122, 0.2); }
-
-    #drag-ghost {
-      position: fixed; pointer-events: none; z-index: 9999;
-      opacity: 0.95; transform: scale(1.05);
-      box-shadow: 5px 5px 15px rgba(0,0,0,0.5);
-      display: none;
-    }
-
-    /* MODAL STYLES */
-    .modal-overlay {
-      position: fixed; top:0; left:0; width:100%; height:100%;
-      background: rgba(0,0,0,0.6);
-      display: flex; justify-content: center; align-items: center;
-      z-index: 10000;
-      opacity: 0; pointer-events: none; transition: opacity 0.3s;
-    }
-    .modal-overlay.active { opacity: 1; pointer-events: auto; }
-    .modal-box {
-      background: white; color: #333;
-      padding: 30px; border-radius: 12px;
-      text-align: center; max-width: 300px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-    }
-    .modal-box h2 { margin-top: 0; color: #205c36; }
-    .modal-actions { margin-top: 20px; display: flex; gap: 10px; justify-content: center; }
-    .modal-actions button { background: #205c36; color: white; padding: 10px 20px; font-size: 14px; }
-
-    .run-stats {
-      display: flex;
-      justify-content: center;
-      gap: 12px;
-      font-size: 12px;
-      padding: 4px 8px;
-      background: rgba(0,0,0,0.2);
-      border-top: 1px solid rgba(255,255,255,0.1);
-      border-bottom: 1px solid rgba(255,255,255,0.1);
-    }
-
-    .run-stats span { opacity: 0.95; }
-
-    .stats-grid {
-      text-align: left;
-      margin-top: 10px;
-      display: grid;
-      grid-template-columns: auto auto;
-      gap: 6px 16px;
-      font-size: 14px;
-    }
-
-    .stats-grid strong { text-align: right; }
-    
-    @media (prefers-reduced-motion: reduce){
-      * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
-      .confetti { display: none !important; }
-    }
-
-    /* Confetti */
-    .confetti {
-      position: absolute; width: 10px; height: 10px;
-      background: #f00;
-      animation: fall linear forwards;
-    }
-    @keyframes fall { to { transform: translateY(100vh) rotate(720deg); } }
-    @supports (height: 100dvh){
-      @keyframes fall { to { transform: translateY(100dvh) rotate(720deg); } }
-    }
-  
-    /* Suit background color accessibility toggle */
-    :root{
-      --suit-bg-spades: #e3f2fd;   /* light blue */
-      --suit-bg-hearts: #ffebee;   /* light red/pink */
-      --suit-bg-diamonds: #fff8e1; /* light amber */
-      --suit-bg-clubs: #e8f5e9;    /* light green */
-    }
-    /* Slightly smaller label on narrow screens */
-
-  
-/* Suit style control */
-    .suit-style-label{
-      font-size: 12px;
-      font-weight: 700;
-      opacity: .9;
-      align-self: center;
-      margin-left: 2px;
-      margin-right: 2px;
-      white-space: nowrap;
-    }
-    #suitStyleSelect{
-      height: 28px;
-      border-radius: 4px;
-      border: 1px solid rgba(0,0,0,0.25);
-      padding: 0 8px;
-      font-weight: 700;
-      font-size: 12px;
-      background: #e0e0e0;
-      color: #222;
-      box-shadow: 0 2px 2px rgba(0,0,0,0.2);
-      max-width: 160px;
-    }
-    #suitStyleSelect:active{ transform: translateY(1px); }
-
-    @media (max-width: 420px){
-      .suit-style-label{ display:none; }
-      .dblclick-foundation-label{ display:inline-block; font-size: 11px; }
-      #suitStyleSelect{ max-width: 140px; padding: 0 6px; }
-    }
-
-    /* ==============================
-       Suit Distinction Styles
-       Applies only to face-up cards: .card.face
-       Suit class names: .suit-spades/.suit-hearts/.suit-diamonds/.suit-clubs
-       ============================== */
-    body.suit-style-normal .card.face{ /* baseline */ }
-
-    /* A) Color Background (lighter) */
-    :root{
-      --s-spade: #cfe3ff;
-      --s-heart: #ffd0d0;
-      --s-diamond: #ffe7b8;
-      --s-club: #d6f5df;
-
-      --s-spade-dark: #1f3a5a;
-      --s-heart-dark: #7a0b0b;
-      --s-diamond-dark: #8a5a00;
-      --s-club-dark: #0b4d22;
-
-      --s-spade-cb: #0D47A1;
-      --s-heart-cb: #D32F2F;
-      --s-diamond-cb: #F9A825;
-      --s-club-cb: #00796B;
-    }
-
-    body.suit-style-color .card.face.suit-spades{ background: var(--s-spade); }
-    body.suit-style-color .card.face.suit-hearts{ background: var(--s-heart); }
-    body.suit-style-color .card.face.suit-diamonds{ background: var(--s-diamond); }
-    body.suit-style-color .card.face.suit-clubs{ background: var(--s-club); }
-
-    /* B) Dark Background */
-    body.suit-style-dark .card.face{ color:#fff !important; }
-    body.suit-style-dark .card.face.suit-spades{ background: var(--s-spade-dark); border-color: rgba(255,255,255,.35); }
-    body.suit-style-dark .card.face.suit-hearts{ background: var(--s-heart-dark); border-color: rgba(255,255,255,.35); }
-    body.suit-style-dark .card.face.suit-diamonds{ background: var(--s-diamond-dark); border-color: rgba(255,255,255,.35); }
-    body.suit-style-dark .card.face.suit-clubs{ background: var(--s-club-dark); border-color: rgba(255,255,255,.35); }
-
-    /* C) Color + Border (strong edge cue) */
-    body.suit-style-border .card.face{ border-width: 3px; }
-    body.suit-style-border .card.face.suit-spades{ background: var(--s-spade); border-color: #1f3a5a; }
-    body.suit-style-border .card.face.suit-hearts{ background: var(--s-heart); border-color: #7a0b0b; }
-    body.suit-style-border .card.face.suit-diamonds{ background: var(--s-diamond); border-color: #8a5a00; }
-    body.suit-style-border .card.face.suit-clubs{ background: var(--s-club); border-color: #0b4d22; }
-
-    /* Shared watermark/pattern infrastructure */
-    body.suit-style-watermark .card.face,
-    body.suit-style-pattern .card.face{
-      overflow:hidden;
-    }
-    body.suit-style-watermark .card.face::after,
-    body.suit-style-pattern .card.face::after{
-      content: attr(data-suitglyph);
-      position:absolute;
-      inset: 0;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-size: calc(var(--card-w) * 1.4);
-      font-weight: 900;
-      opacity: 0.16;
-      transform: translateY(6px);
-      pointer-events:none;
-    }
-
-    /* D) Color + Watermark */
-    body.suit-style-watermark .card.face.suit-spades{ background: var(--s-spade); }
-    body.suit-style-watermark .card.face.suit-hearts{ background: var(--s-heart); }
-    body.suit-style-watermark .card.face.suit-diamonds{ background: var(--s-diamond); }
-    body.suit-style-watermark .card.face.suit-clubs{ background: var(--s-club); }
-
-    /* E) Color + Pattern overlays */
-    body.suit-style-pattern .card.face.suit-spades{
-      background:
-        repeating-linear-gradient(135deg, rgba(0,0,0,0.10), rgba(0,0,0,0.10) 6px, rgba(0,0,0,0.00) 6px, rgba(0,0,0,0.00) 12px),
-        var(--s-spade);
-    }
-    body.suit-style-pattern .card.face.suit-hearts{
-      background:
-        radial-gradient(circle at 6px 6px, rgba(0,0,0,0.12) 2px, rgba(0,0,0,0.00) 3px),
-        radial-gradient(circle at 16px 16px, rgba(0,0,0,0.12) 2px, rgba(0,0,0,0.00) 3px),
-        var(--s-heart);
-      background-size: 20px 20px;
-    }
-    body.suit-style-pattern .card.face.suit-diamonds{
-      background:
-        repeating-linear-gradient(45deg, rgba(0,0,0,0.10), rgba(0,0,0,0.10) 3px, rgba(0,0,0,0.00) 3px, rgba(0,0,0,0.00) 9px),
-        repeating-linear-gradient(-45deg, rgba(0,0,0,0.06), rgba(0,0,0,0.06) 3px, rgba(0,0,0,0.00) 3px, rgba(0,0,0,0.00) 9px),
-        var(--s-diamond);
-    }
-    body.suit-style-pattern .card.face.suit-clubs{
-      background:
-        linear-gradient(rgba(0,0,0,0.06), rgba(0,0,0,0.06)),
-        repeating-linear-gradient(0deg, rgba(0,0,0,0.12), rgba(0,0,0,0.12) 2px, rgba(0,0,0,0.00) 2px, rgba(0,0,0,0.00) 10px),
-        repeating-linear-gradient(90deg, rgba(0,0,0,0.06), rgba(0,0,0,0.06) 2px, rgba(0,0,0,0.00) 2px, rgba(0,0,0,0.00) 10px),
-        var(--s-club);
-    }
-
-    /* F) Big Corner Glyphs (max clarity without recolor) */
-    body.suit-style-corners .val-tl{ font-size: clamp(18px, calc(var(--card-w) * 0.32), 26px); }
-    body.suit-style-corners .suit-tr{ font-size: clamp(18px, calc(var(--card-w) * 0.32), 26px); }
-    body.suit-style-corners .val-center{ opacity: 0.35; }
-
-    /* G) Colorblind-safe palette (also boosts glyph sizes a bit) */
-    body.suit-style-cb .card.face{ color:#fff !important; border-color: rgba(255,255,255,.35); }
-    body.suit-style-cb .card.face.suit-spades{ background: var(--s-spade-cb); }
-    body.suit-style-cb .card.face.suit-hearts{ background: var(--s-heart-cb); }
-    body.suit-style-cb .card.face.suit-diamonds{ background: var(--s-diamond-cb); color:#111 !important; border-color: rgba(0,0,0,.25); }
-    body.suit-style-cb .card.face.suit-clubs{ background: var(--s-club-cb); }
-    body.suit-style-cb .val-tl, body.suit-style-cb .suit-tr{ text-shadow: 0 1px 1px rgba(0,0,0,0.35); }
-
-  
-/* --- Responsive header + mobile menu --- */
-header{
-  flex-wrap: nowrap;
-  gap: 8px;
-}
-header .header-main{
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-header .controls{
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 6px;
-  min-width: 0;
-}
-header .controls > *{ flex: 0 0 auto; }
-
-#menuToggle{
-  display: none;
-  min-width: 34px;
-  height: 30px;
-  padding: 0;
-  font-size: 16px;
-  line-height: 1;
-}
-
-@media (max-width: 520px){
-  header{
-    flex-wrap: wrap;
-    align-items: flex-start;
-    row-gap: 6px;
-    padding: calc(6px + var(--safe-top)) calc(8px + var(--safe-right)) 6px calc(8px + var(--safe-left));
-  }
-  header .header-main{
-    width: 100%;
-    justify-content: space-between;
-  }
-  header h1{ font-size: 14px; margin-right: 6px; }
-  #menuToggle{ display: inline-flex; align-items: center; justify-content: center; }
-
-  header .controls{
-    flex: 1 1 100%;
-    overflow: hidden;
-    max-height: 0;
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(-4px);
-    pointer-events: none;
-    transition: max-height 0.2s ease, opacity 0.2s ease, transform 0.2s ease, visibility 0s linear 0.2s;
-  }
-  header.menu-open .controls{
-    max-height: 260px;
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0);
-    pointer-events: auto;
-    transition-delay: 0s;
-  }
-  header h1{ flex: 1 1 120px; font-size: 14px; margin-right: 6px; }
-  #menuToggle {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-  header .controls{ flex: 1 1 100%; }
-  header .controls button,
-  header .controls select{
-    height: 28px;
-    font-size: 12px;
-    padding: 0 8px;
-    max-width: 100%;
-  }
-}
-
-
-/* Rules Modal */
-.rules-modal{
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-.rules-modal.hidden{ display: none; }
-.rules-content{
-  background: #ffffff;
-  color: #111;
-  padding: 20px;
-  border-radius: 8px;
-  max-width: 90%;
-  width: 420px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-}
-.rules-content h2{ margin-top: 0; }
-.rules-content button{
-  margin-top: 12px;
-  padding: 6px 12px;
-  font-weight: bold;
-}
-
-
-/* Rules modal formatting */
-.rules-content{
-  max-height: min(80vh, 620px);
-  overflow: auto;
-}
-.rules-content h2{ margin: 0 0 10px; }
-.rules-content h3{
-  margin: 14px 0 6px;
-  font-size: 14px;
-}
-.rules-content p{
-  margin: 6px 0;
-  line-height: 1.35;
-}
-.rules-content ul{ margin: 6px 0 8px 18px; }
-.rules-content ul.examples{ margin-top: 4px; }
-.rules-content code{
-  background: rgba(0,0,0,0.06);
-  padding: 1px 4px;
-  border-radius: 4px;
-  font-weight: 700;
-}
-
-</style>
-</head>
-<body class="suit-style-normal">
-  <header>
-    <div class="header-main">
-      <h1>Build-By-Suit Solitaire</h1>
-      <button id="menuToggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="headerControls">☰</button>
-    </div>
-    <div class="controls" id="headerControls">
-      <button id="hintBtn" onclick="showHint()">Hint</button>
-      
-      <label class="suit-style-label" for="suitStyleSelect">Suit Style:</label>
-      <select id="suitStyleSelect" title="Choose suit distinction style">
-        <option value="normal">Normal</option>
-        <option value="color">Color Background</option>
-        <option value="dark">Dark Background</option>
-        <option value="border">Color + Border</option>
-        <option value="watermark">Color + Watermark</option>
-        <option value="pattern">Color + Pattern</option>
-        <option value="corners">Big Corner Glyphs</option>
-        <option value="cb">Colorblind-Safe</option>
-      </select>
-
-      <label class="suit-style-label dblclick-foundation-label" for="doubleClickFoundationToggle">Double-click to Foundation</label>
-      <input id="doubleClickFoundationToggle" type="checkbox" title="Double-click a top card or free-cell card to move it to a valid foundation" />
-
-      
-      <button id="rulesBtn" title="View rules">Rules</button>
-      <button id="statsBtn" title="View stats">Stats</button>
-<button id="autoBtn">Auto</button>
-      <button id="giveUpBtn">Give Up</button>
-      <button id="undoBtn">Undo</button>
-      <button id="newGameBtn">New</button>
-    </div>
-  </header>
-
-  <div class="run-stats" id="runStatsBar">
-    <span id="moveCountStat">Moves: 0</span>
-    <span id="elapsedTimeStat">Time: 00:00</span>
-    <span id="undoCountStat">Undos: 0</span>
-  </div>
-
-  <div class="app">
-    <div class="top-section">
-      <div class="zone-found">
-        <div class="zone-title">Foundations</div>
-        <div class="foundations-row">
-          <div class="foundation" data-id="0"></div>
-          <div class="foundation" data-id="1"></div>
-          <div class="foundation" data-id="2"></div>
-          <div class="foundation" data-id="3"></div>
-        </div>
-      </div>
-
-      <div class="zone-hand">
-        <div class="zone-title">Cells</div>
-        <div class="hand-row">
-          <div class="hand-slot" data-id="0"></div>
-          <div class="hand-slot" data-id="1"></div>
-          <div class="hand-slot" data-id="2"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="zone-tableau">
-      <div class="tableau-row" id="tableau">
-        <div class="pile" data-id="0"></div>
-        <div class="pile" data-id="1"></div>
-        <div class="pile" data-id="2"></div>
-        <div class="pile" data-id="3"></div>
-        <div class="pile" data-id="4"></div>
-        <div class="pile" data-id="5"></div>
-        <div class="pile" data-id="6"></div>
-      </div>
-    </div>
-  </div>
-
-  <footer class="app-version">Version <span id="appVersion"></span></footer>
-
-  <div id="drag-ghost"></div>
-
-  <div id="modalWin" class="modal-overlay">
-    <div class="modal-box">
-      <h2>Victory!</h2>
-      <p>You have conquered the cards.</p>
-      <div class="modal-actions">
-        <button onclick="start()">Play Again</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="modalLose" class="modal-overlay">
-    <div class="modal-box">
-      <h2 style="color:#b71c1c">Out of Moves</h2>
-      <p>The cards have won this round.</p>
-      <div class="modal-actions">
-        <button onclick="undo()">Undo</button>
-        <button onclick="start()">New Game</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="modalStats" class="modal-overlay">
-    <div class="modal-box">
-      <h2>Stats</h2>
-      <div class="stats-grid" id="statsGrid"></div>
-      <div class="modal-actions">
-        <button id="resetStatsBtn">Reset Stats</button>
-        <button id="closeStatsBtn">Close</button>
-      </div>
-    </div>
-  </div>
-
-<script>
 const suits = ["♠","♥","♦","♣"];
 const ranks = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
 const suitColors = { "♠":"#212121", "♥":"#d50000", "♦":"#0277bd", "♣":"#2e7d32" };
@@ -737,6 +101,24 @@ let doubleClickToFoundationEnabled=true;
 
 const MAX_PERSISTED_HISTORY = 150;
 
+function isValidCard(card){
+  return !!card &&
+    typeof card === 'object' &&
+    suits.includes(card.suit) &&
+    ranks.includes(card.rank) &&
+    Number.isFinite(card.value) &&
+    card.value >= 1 && card.value <= 13 &&
+    typeof card.faceUp === 'boolean';
+}
+
+function clearPersistedGameState(){
+  try { localStorage.removeItem(GAME_STATE_KEY); } catch(e) {}
+}
+
+function isValidPile(pile){
+  return Array.isArray(pile) && pile.every(isValidCard);
+}
+
 function persistGameState(){
   const persistedHistory = historyStack.slice(-MAX_PERSISTED_HISTORY);
   const snapshot = {
@@ -767,8 +149,18 @@ function loadPersistedGameState(){
     const raw = localStorage.getItem(GAME_STATE_KEY);
     if(!raw) return false;
     const parsed = JSON.parse(raw);
-    if(!parsed || !Array.isArray(parsed.tableau) || !Array.isArray(parsed.foundations) || !Array.isArray(parsed.hand)) return false;
-    if(parsed.tableau.length !== 7 || parsed.foundations.length !== 4 || parsed.hand.length !== 3) return false;
+    if(!parsed || !Array.isArray(parsed.tableau) || !Array.isArray(parsed.foundations) || !Array.isArray(parsed.hand)){
+      clearPersistedGameState();
+      return false;
+    }
+    if(parsed.tableau.length !== 7 || parsed.foundations.length !== 4 || parsed.hand.length !== 3){
+      clearPersistedGameState();
+      return false;
+    }
+    if(!parsed.tableau.every(isValidPile) || !parsed.foundations.every(isValidPile) || !parsed.hand.every(card => card === null || isValidCard(card))){
+      clearPersistedGameState();
+      return false;
+    }
 
     tableau = parsed.tableau;
     foundations = parsed.foundations;
@@ -782,6 +174,7 @@ function loadPersistedGameState(){
     selected = null;
     return true;
   } catch(e){
+    clearPersistedGameState();
     return false;
   }
 }
@@ -1540,7 +933,8 @@ function render(){
     slot.ondragover = handleDragOver; slot.ondragenter = handleDragEnter;
     slot.ondragleave = handleDragLeave; slot.ondrop = (e) => handleDrop(e, 'hand', i);
     slot.onclick = () => cardClick('hand', i);
-    if(hand[i]) slot.appendChild(createCardEl(hand[i], 'hand', i));
+    const card = isValidCard(hand[i]) ? hand[i] : null;
+    if(card) slot.appendChild(createCardEl(card, 'hand', i));
   });
   document.querySelectorAll('.foundation').forEach(found => {
     found.innerHTML = "";
@@ -1548,7 +942,7 @@ function render(){
     found.ondragover = handleDragOver; found.ondragenter = handleDragEnter;
     found.ondragleave = handleDragLeave; found.ondrop = (e) => handleDrop(e, 'foundation', i);
     found.onclick = () => cardClick('foundation', i);
-    const p = foundations[i];
+    const p = Array.isArray(foundations[i]) ? foundations[i] : [];
     if(p.length){
       const el = createCardEl(p[p.length-1], 'foundation', i, p.length-1);
       el.draggable = false; el.onclick = null; el.ontouchstart=null;
@@ -1565,7 +959,7 @@ function render(){
         else executeHandToPile(selected.idx, i);
         selected=null; render();
     }};
-    const stack = tableau[i];
+    const stack = Array.isArray(tableau[i]) ? tableau[i] : [];
     let ch = parseInt(computedStyle.getPropertyValue('--card-h').trim()) || 116;
     pile.style.height = (ch + (stack.length-1)*gap) + "px";
     stack.forEach((c, j) => {
@@ -1637,22 +1031,55 @@ function scheduleFit(){
     render();
   });
 }
-document.getElementById("newGameBtn").onclick = start;
-document.getElementById("undoBtn").onclick = undo;
-document.getElementById("autoBtn").onclick = autoPlay;
-document.getElementById("giveUpBtn").onclick = () => {
-  if(hasActiveRunToRecordAsLoss() && !runResultRecorded) recordGameResult('loss');
-  document.getElementById('modalLose').classList.add('active');
-};
-document.getElementById("statsBtn").onclick = () => {
-  renderStatsModal();
-  document.getElementById('modalStats').classList.add('active');
-};
-document.getElementById("closeStatsBtn").onclick = () => document.getElementById('modalStats').classList.remove('active');
-document.getElementById("resetStatsBtn").onclick = () => {
-  saveStatsHistory([]);
-  renderStatsModal();
-};
+function initActionControls(){
+  document.querySelectorAll('[data-action="show-hint"]').forEach((button) => {
+    button.addEventListener('click', showHint);
+  });
+  document.querySelectorAll('[data-action="start-game"]').forEach((button) => {
+    button.addEventListener('click', start);
+  });
+  document.querySelectorAll('[data-action="undo-move"]').forEach((button) => {
+    button.addEventListener('click', undo);
+  });
+
+  const newGameBtn = document.getElementById("newGameBtn");
+  if(newGameBtn) newGameBtn.addEventListener('click', start);
+
+  const undoBtn = document.getElementById("undoBtn");
+  if(undoBtn) undoBtn.addEventListener('click', undo);
+
+  const autoBtn = document.getElementById("autoBtn");
+  if(autoBtn) autoBtn.addEventListener('click', autoPlay);
+
+  const giveUpBtn = document.getElementById("giveUpBtn");
+  if(giveUpBtn){
+    giveUpBtn.addEventListener('click', () => {
+      if(hasActiveRunToRecordAsLoss() && !runResultRecorded) recordGameResult('loss');
+      document.getElementById('modalLose').classList.add('active');
+    });
+  }
+
+  const statsBtn = document.getElementById("statsBtn");
+  if(statsBtn){
+    statsBtn.addEventListener('click', () => {
+      renderStatsModal();
+      document.getElementById('modalStats').classList.add('active');
+    });
+  }
+
+  const closeStatsBtn = document.getElementById("closeStatsBtn");
+  if(closeStatsBtn) closeStatsBtn.addEventListener('click', () => document.getElementById('modalStats').classList.remove('active'));
+
+  const resetStatsBtn = document.getElementById("resetStatsBtn");
+  if(resetStatsBtn){
+    resetStatsBtn.addEventListener('click', () => {
+      saveStatsHistory([]);
+      renderStatsModal();
+    });
+  }
+}
+
+initActionControls();
 window.addEventListener('resize', scheduleFit, {passive:true});
 window.addEventListener('orientationchange', scheduleFit, {passive:true});
 if(window.visualViewport){
@@ -1755,56 +1182,3 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
-
-</script>
-
-<!-- Rules Modal -->
-<div id="rulesModal" class="rules-modal hidden">
-  <div class="rules-content">
-    
-    <h2>How to Play</h2>
-
-    <h3>Goal</h3>
-    <p>Move all cards to the <b>Foundations</b>, building each suit from <b>Ace → King</b>.</p>
-
-    <h3>Tableau (Main Columns)</h3>
-    <p>Cards build <b>down by suit</b>.</p>
-    <p><b>Examples:</b></p>
-    <ul class="examples">
-      <li><code>9♠ → 8♠ → 7♠</code></li>
-      <li><code>Q♥ → J♥ → 10♥</code></li>
-      <li><code>5♦ → 4♦ → 3♦</code></li>
-    </ul>
-
-    <p><b>You may move:</b></p>
-    <ul>
-      <li>A single card</li>
-      <li>Or a card <b>with all cards stacked beneath it</b>, as long as they are in correct order (same suit, descending by 1)</li>
-    </ul>
-
-    <p>When you move a card, you must move <b>every card below it</b> in that stack.</p>
-
-    <p><b>Empty columns</b> may only be filled with:</p>
-    <ul>
-      <li>A <b>King</b></li>
-      <li>Or a correctly ordered stack that begins with a King</li>
-    </ul>
-
-    <h3>Foundations</h3>
-    <p>Foundations build <b>up by suit</b>:</p>
-    <p><code>A♣ → 2♣ → 3♣ → … → K♣</code></p>
-    <p>Only Aces may start a foundation.</p>
-
-    <h3>Cells</h3>
-    <p>Each cell can hold <b>one card</b>.</p>
-    <p>Cards in cells may move to the tableau or to foundations if the move is valid.</p>
-
-    <h3>Win</h3>
-    <p>You win when all cards are in the foundations.</p>
-
-    <button id="closeRulesBtn">Close</button>
-  </div>
-</div>
-
-</body>
-</html>
