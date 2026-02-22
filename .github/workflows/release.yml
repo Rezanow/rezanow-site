@@ -34,6 +34,7 @@ jobs:
           fi
 
       - name: Validate commit messages
+        if: github.event_name == 'push'
         uses: wagoid/commitlint-github-action@v6
         with:
           configFile: commitlint.config.cjs
