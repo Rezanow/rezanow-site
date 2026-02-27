@@ -660,7 +660,6 @@ header .controls > *{ flex: 0 0 auto; }
         <option value="cells4">4</option>
       </select>
 
-      <button id="newGameBtn">New Game</button>
 
       
       <button id="rulesBtn" title="View rules">Rules</button>
@@ -1897,7 +1896,6 @@ function scheduleFit(){
 }
 document.getElementById("undoBtn").onclick = undo;
 document.getElementById("autoBtn").onclick = autoPlay;
-document.getElementById("newGameBtn").onclick = start;
 document.getElementById("giveUpBtn").onclick = () => {
   if(hasActiveRunToRecordAsLoss() && !runResultRecorded) recordGameResult('loss');
   document.getElementById('modalLose').classList.add('active');
