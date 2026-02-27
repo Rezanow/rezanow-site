@@ -114,6 +114,42 @@ function isValidPile(pile){
   return Array.isArray(pile) && pile.every(isValidCard);
 }
 
+function isValidSnapshotShape(snapshot){
+  if(!snapshot || typeof snapshot !== 'object') return false;
+  const requiredKeys = [
+    'tableau',
+    'foundations',
+    'hand',
+    'moveCount',
+    'undoCount',
+    'elapsedMs',
+    'gameFinished',
+    'runResultRecorded'
+  ];
+  if(!requiredKeys.every(key => Object.prototype.hasOwnProperty.call(snapshot, key))) return false;
+  if(!Array.isArray(snapshot.tableau) || snapshot.tableau.length !== 7) return false;
+  if(!Array.isArray(snapshot.foundations) || snapshot.foundations.length !== 4) return false;
+  if(!Array.isArray(snapshot.hand) || snapshot.hand.length !== 3) return false;
+  if(!snapshot.tableau.every(isValidPile) || !snapshot.foundations.every(isValidPile)) return false;
+  if(!snapshot.hand.every(card => card === null || isValidCard(card))) return false;
+  if(!Number.isFinite(snapshot.moveCount) || !Number.isFinite(snapshot.undoCount) || !Number.isFinite(snapshot.elapsedMs)) return false;
+  if(typeof snapshot.gameFinished !== 'boolean' || typeof snapshot.runResultRecorded !== 'boolean') return false;
+  return true;
+}
+
+function sanitizeHistoryStack(rawHistory){
+  if(!Array.isArray(rawHistory)) return [];
+  const sanitized = [];
+  for(const entry of rawHistory){
+    if(typeof entry !== 'string') continue;
+    try {
+      const parsed = JSON.parse(entry);
+      if(isValidSnapshotShape(parsed)) sanitized.push(entry);
+    } catch(e) {}
+  }
+  return sanitized;
+}
+
 function persistGameState(){
   const persistedHistory = historyStack.slice(-MAX_PERSISTED_HISTORY);
   const snapshot = {
@@ -160,13 +196,18 @@ function loadPersistedGameState(){
     tableau = parsed.tableau;
     foundations = parsed.foundations;
     hand = parsed.hand;
-    historyStack = Array.isArray(parsed.historyStack) ? parsed.historyStack : [];
+    const sanitizedHistory = sanitizeHistoryStack(parsed.historyStack);
+    historyStack = sanitizedHistory;
     moveCount = Number.isFinite(parsed.moveCount) ? parsed.moveCount : 0;
     undoCount = Number.isFinite(parsed.undoCount) ? parsed.undoCount : 0;
     elapsedMs = Number.isFinite(parsed.elapsedMs) ? parsed.elapsedMs : 0;
     gameFinished = !!parsed.gameFinished;
     runResultRecorded = !!parsed.runResultRecorded;
     selected = null;
+
+    if(!Array.isArray(parsed.historyStack) || sanitizedHistory.length !== parsed.historyStack.length){
+      persistGameState();
+    }
     return true;
   } catch(e){
     clearPersistedGameState();
@@ -329,23 +370,52 @@ function undo(){
   clearHints();
   // History stores snapshots from BEFORE each committed change.
   // So undo should restore the LAST saved snapshot (top of stack).
-  if(historyStack.length > 0){
-    const prev = JSON.parse(historyStack.pop());
-    tableau = prev.tableau;
-    foundations = prev.foundations;
-    hand = prev.hand;
-    moveCount = Number.isFinite(prev.moveCount) ? prev.moveCount : moveCount;
-    undoCount = Number.isFinite(prev.undoCount) ? prev.undoCount : undoCount;
-    elapsedMs = Number.isFinite(prev.elapsedMs) ? prev.elapsedMs : elapsedMs;
-    gameFinished = typeof prev.gameFinished === 'boolean' ? prev.gameFinished : false;
-    runResultRecorded = typeof prev.runResultRecorded === 'boolean' ? prev.runResultRecorded : false;
-    selected = null;
-    undoCount++;
-    lastTickTs = Date.now();
-    persistGameState();
-    updateRunStatsUI();
-    fit(); render();
+  if(historyStack.length <= 0) return;
+
+  let prev = null;
+  let removedCorruptEntries = false;
+
+  while(historyStack.length > 0 && !prev){
+    const rawEntry = historyStack.pop();
+    if(typeof rawEntry !== 'string'){
+      removedCorruptEntries = true;
+      continue;
+    }
+
+    try {
+      const parsed = JSON.parse(rawEntry);
+      if(!isValidSnapshotShape(parsed)){
+        removedCorruptEntries = true;
+        continue;
+      }
+      prev = parsed;
+    } catch(e){
+      removedCorruptEntries = true;
+    }
   }
+
+  if(!prev){
+    if(removedCorruptEntries){
+      clearPersistedGameState();
+      persistGameState();
+    }
+    return;
+  }
+
+  tableau = prev.tableau;
+  foundations = prev.foundations;
+  hand = prev.hand;
+  moveCount = prev.moveCount;
+  undoCount = prev.undoCount;
+  elapsedMs = prev.elapsedMs;
+  gameFinished = prev.gameFinished;
+  runResultRecorded = prev.runResultRecorded;
+  selected = null;
+  undoCount++;
+  lastTickTs = Date.now();
+  persistGameState();
+  updateRunStatsUI();
+  fit(); render();
 }
 
 function start(){
