@@ -1764,43 +1764,42 @@ document.addEventListener('DOMContentLoaded', () => {
     
     <h2>How to Play</h2>
 
-    <h3>Goal</h3>
-    <p>Move all cards to the <b>Foundations</b>, building each suit from <b>Ace → King</b>.</p>
+    <h3>Objective</h3>
+    <p>Move all cards to the <b>foundations</b>, building each suit in ascending order from <b>Ace to King</b>.</p>
 
-    <h3>Tableau (Main Columns)</h3>
-    <p>Cards build <b>down by suit</b>.</p>
-    <p><b>Examples:</b></p>
-    <ul class="examples">
-      <li><code>9♠ → 8♠ → 7♠</code></li>
-      <li><code>Q♥ → J♥ → 10♥</code></li>
-      <li><code>5♦ → 4♦ → 3♦</code></li>
-    </ul>
-
-    <p><b>You may move:</b></p>
+    <h3>Tableau Rules</h3>
+    <p>The tableau columns are your working area.</p>
     <ul>
-      <li>A single card</li>
-      <li>Or a card <b>with all cards stacked beneath it</b>, as long as they are in correct order (same suit, descending by 1)</li>
+      <li>You may select <b>any face-up card</b> in a column.</li>
+      <li>When you move a card, <b>every card stacked on top of it must move with it.</b></li>
+      <li>Only the card you selected must be valid for its destination. The cards above it are not checked.</li>
     </ul>
 
-    <p>When you move a card, you must move <b>every card below it</b> in that stack.</p>
+    <p><b>Example</b></p>
+    <p><code>K♠<br>9♥ &larr; selected<br>7♦<br>3♣<br>2♣</code></p>
+    <p>Selecting <b>9♥</b> moves:</p>
+    <p><code>9♥<br>7♦<br>3♣<br>2♣</code></p>
+    <p>Only <b>9♥</b> must legally fit where you place it.</p>
 
-    <p><b>Empty columns</b> may only be filled with:</p>
-    <ul>
-      <li>A <b>King</b></li>
-      <li>Or a correctly ordered stack that begins with a King</li>
-    </ul>
+    <h3>Building on the Tableau</h3>
+    <p>Cards must follow the game’s build rule (e.g., descending by suit).</p>
+    <p>Empty columns may only be filled with a <b>King</b>.</p>
 
     <h3>Foundations</h3>
-    <p>Foundations build <b>up by suit</b>:</p>
-    <p><code>A♣ → 2♣ → 3♣ → … → K♣</code></p>
-    <p>Only Aces may start a foundation.</p>
+    <ul>
+      <li>Start with an <b>Ace</b>.</li>
+      <li>Build upward by suit: Ace → 2 → 3 → … → King.</li>
+      <li>Cards placed in the foundation cannot return.</li>
+    </ul>
 
     <h3>Cells</h3>
-    <p>Each cell can hold <b>one card</b>.</p>
-    <p>Cards in cells may move to the tableau or to foundations if the move is valid.</p>
-
-    <h3>Win</h3>
-    <p>You win when all cards are in the foundations.</p>
+    <p>Cells are single-card holding spaces.</p>
+    <ul>
+      <li>One card per cell.</li>
+      <li>Only the <b>top card</b> of a column may be moved into a cell.</li>
+      <li>Cards in cells may later move to the tableau or foundation if legal.</li>
+    </ul>
+    <p>Cells allow you to temporarily free blocked cards and create new options.</p>
 
     <button id="closeRulesBtn">Close</button>
   </div>
