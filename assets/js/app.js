@@ -9,8 +9,7 @@ const GAME_STATE_KEY = "rs_gameState_v1";
 const STATS_HISTORY_KEY = "rs_statsHistory_v1";
 const DBL_CLICK_FOUNDATION_KEY = "rs_dblClickFoundation_v1";
 const MAX_STATS_HISTORY = 100;
-const APP_VERSION = "v0.1.1";
-
+const APP_VERSION = "v0.1.2";
 function applySuitStyle(style){
   const clsPrefix = "suit-style-";
   // remove existing suit-style-* classes
@@ -79,8 +78,6 @@ function renderAppVersion(){
   const resolvedVersion = (typeof APP_VERSION === "string" ? APP_VERSION.trim() : "");
   versionEl.textContent = resolvedVersion || "v0.0.0";
 }
-
-
 
 let tableau=[[],[],[],[],[],[],[]];
 let foundations=[[],[],[],[]];
