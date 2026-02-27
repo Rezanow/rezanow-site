@@ -456,21 +456,34 @@ width: 100%;
     }
 
     /* G) Big Corner Glyphs (max clarity without recolor) */
-    body.suit-style-corners .val-tl{ font-size: clamp(18px, calc(var(--card-w) * 0.32), 26px); }
-    body.suit-style-corners .suit-tr{ font-size: clamp(18px, calc(var(--card-w) * 0.32), 26px); }
-    body.suit-style-corners .val-center{ opacity: 0.35; }
+    body.suit-style-corners .val-tl,
+    body.suit-style-cb-corners .val-tl{ font-size: clamp(18px, calc(var(--card-w) * 0.32), 26px); }
+    body.suit-style-corners .suit-tr,
+    body.suit-style-cb-corners .suit-tr{ font-size: clamp(18px, calc(var(--card-w) * 0.32), 26px); }
+    body.suit-style-corners .val-center,
+    body.suit-style-cb-corners .val-center{ opacity: 0.35; }
 
     /* H) High-contrast backgrounds */
-    body.suit-style-cb .card.face{ color:#fff !important; border-color: rgba(255,255,255,.35); }
-    body.suit-style-cb .card.face.suit-spades{ background: var(--face-spade-high-contrast); }
-    body.suit-style-cb .card.face.suit-hearts{ background: var(--face-heart-high-contrast); }
-    body.suit-style-cb .card.face.suit-diamonds{ background: var(--face-diamond-high-contrast); color:#111 !important; border-color: rgba(0,0,0,.5); }
-    body.suit-style-cb .card.face.suit-clubs{ background: var(--face-club-high-contrast); }
+    body.suit-style-cb .card.face,
+    body.suit-style-cb-corners .card.face{ color:#fff !important; border-color: rgba(255,255,255,.35); }
+    body.suit-style-cb .card.face.suit-spades,
+    body.suit-style-cb-corners .card.face.suit-spades{ background: var(--face-spade-high-contrast); }
+    body.suit-style-cb .card.face.suit-hearts,
+    body.suit-style-cb-corners .card.face.suit-hearts{ background: var(--face-heart-high-contrast); }
+    body.suit-style-cb .card.face.suit-diamonds,
+    body.suit-style-cb-corners .card.face.suit-diamonds{ background: var(--face-diamond-high-contrast); color:#111 !important; border-color: rgba(0,0,0,.5); }
+    body.suit-style-cb .card.face.suit-clubs,
+    body.suit-style-cb-corners .card.face.suit-clubs{ background: var(--face-club-high-contrast); }
     body.suit-style-cb .card.face:not(.suit-diamonds) .val-tl,
-    body.suit-style-cb .card.face:not(.suit-diamonds) .suit-tr{ text-shadow: 0 1px 1px rgba(0,0,0,0.4); }
+    body.suit-style-cb .card.face:not(.suit-diamonds) .suit-tr,
+    body.suit-style-cb-corners .card.face:not(.suit-diamonds) .val-tl,
+    body.suit-style-cb-corners .card.face:not(.suit-diamonds) .suit-tr{ text-shadow: 0 1px 1px rgba(0,0,0,0.4); }
     body.suit-style-cb .card.face.suit-diamonds .val-tl,
-    body.suit-style-cb .card.face.suit-diamonds .suit-tr{ text-shadow: 0 1px 0 rgba(255,255,255,0.35); }
-    body.suit-style-cb {
+    body.suit-style-cb .card.face.suit-diamonds .suit-tr,
+    body.suit-style-cb-corners .card.face.suit-diamonds .val-tl,
+    body.suit-style-cb-corners .card.face.suit-diamonds .suit-tr{ text-shadow: 0 1px 0 rgba(255,255,255,0.35); }
+    body.suit-style-cb,
+    body.suit-style-cb-corners {
       --card-back-a: #4b2d6b;
       --card-back-b: #311b4a;
       --card-back-border: #e8ddf7;
@@ -632,6 +645,7 @@ header .controls > *{ flex: 0 0 auto; }
         <option value="pattern-hc">High Contrast Patterns</option>
         <option value="corners">Big Corner Glyphs</option>
         <option value="cb">High Contrast Backgrounds</option>
+        <option value="cb-corners">High Contrast + Big Corner Glyphs</option>
       </select>
 
       <label class="suit-style-label dblclick-foundation-label" for="doubleClickFoundationToggle">Double-click to Foundation</label>
@@ -735,7 +749,7 @@ const GAME_STATE_KEY = "rs_gameState_v1";
 const STATS_HISTORY_KEY = "rs_statsHistory_v1";
 const DBL_CLICK_FOUNDATION_KEY = "rs_dblClickFoundation_v1";
 const MAX_STATS_HISTORY = 100;
-const APP_VERSION = "v0.1.5";
+const APP_VERSION = "v0.1.6";
 function applySuitStyle(style){
   const clsPrefix = "suit-style-";
   // remove existing suit-style-* classes
@@ -760,7 +774,7 @@ function loadSuitStyle(){
   if(style === "dark") style = "cb";
   if(style === "border") style = "color";
 
-  const allowed = new Set(["normal","color","multicolor","watermark","watermark-hc","pattern","pattern-hc","corners","cb"]);
+  const allowed = new Set(["normal","color","multicolor","watermark","watermark-hc","pattern","pattern-hc","corners","cb","cb-corners"]);
   if(!allowed.has(style)) style = "normal";
   applySuitStyle(style);
 }
@@ -1711,7 +1725,7 @@ function fit(){
     g = Math.round(Math.min(44, Math.max(18, baseGap * s * 1.25)));
   }
   // Big Corner Glyphs need additional overlap clearance.
-  if(document.body.classList.contains('suit-style-corners')){
+  if(document.body.classList.contains('suit-style-corners') || document.body.classList.contains('suit-style-cb-corners')){
     g = Math.round(Math.min(52, g * 1.35));
   }
   const cg = Math.round(Math.min(12, Math.max(2, baseColGap * s)));
