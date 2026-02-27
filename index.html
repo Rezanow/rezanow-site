@@ -165,7 +165,7 @@ width: 100%;
       background:
         repeating-linear-gradient(45deg, var(--card-back-a), var(--card-back-a) 5px, var(--card-back-b) 5px, var(--card-back-b) 10px);
       border: 1px solid var(--card-back-border);
-      position: relative;
+      position: absolute;
       overflow: hidden;
     }
     .card.back::after {
@@ -694,7 +694,7 @@ const GAME_STATE_KEY = "rs_gameState_v1";
 const STATS_HISTORY_KEY = "rs_statsHistory_v1";
 const DBL_CLICK_FOUNDATION_KEY = "rs_dblClickFoundation_v1";
 const MAX_STATS_HISTORY = 100;
-const APP_VERSION = "v0.1.2";
+const APP_VERSION = "v0.1.3";
 function applySuitStyle(style){
   const clsPrefix = "suit-style-";
   // remove existing suit-style-* classes
