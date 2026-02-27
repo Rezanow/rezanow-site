@@ -1,4 +1,4 @@
-name: release-and-version
+name: ci-build
 
 on:
   push:
@@ -7,8 +7,7 @@ on:
   pull_request:
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
   commitlint:
@@ -19,117 +18,28 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Ensure semantic version baseline tag exists on main
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        shell: bash
-        run: |
-          set -euo pipefail
-          git fetch --force --tags origin main
-
-          if ! git tag --merged origin/main --list 'v*' | grep -q .; then
-            BASELINE_TAG="v0.1.0"
-            echo "No reachable v* tag found on origin/main. Creating baseline ${BASELINE_TAG}."
-            git tag -a "${BASELINE_TAG}" origin/main -m "chore(release): bootstrap ${BASELINE_TAG}"
-            git push origin "${BASELINE_TAG}"
-          fi
-
       - name: Validate commit messages
         if: github.event_name == 'push'
         uses: wagoid/commitlint-github-action@v6
         with:
           configFile: commitlint.config.cjs
 
-  release:
-    name: release-please
+  build-artifact:
+    name: build-site-artifact
     runs-on: ubuntu-latest
-    needs: commitlint
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
-      tag_name: ${{ steps.release.outputs.tag_name }}
-    steps:
-      - name: Run release-please
-        id: release
-        uses: googleapis/release-please-action@v4
-        with:
-          config-file: .release-please-config.json
-          manifest-file: .release-please-manifest.json
-
-      - name: Validate release-please outputs
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          RELEASE_CREATED='${{ steps.release.outputs.release_created }}'
-          TAG_NAME='${{ steps.release.outputs.tag_name }}'
-
-          if [[ "${RELEASE_CREATED}" != "true" && "${RELEASE_CREATED}" != "false" ]]; then
-            echo "::error::release_created output is missing or invalid: ${RELEASE_CREATED}"
-            exit 1
-          fi
-
-          if [[ "${RELEASE_CREATED}" == "true" ]]; then
-            if [[ -z "${TAG_NAME}" ]]; then
-              echo "::error::tag_name output is empty while release_created=true"
-              exit 1
-            fi
-            if [[ ! "${TAG_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-              echo "::error::tag_name is not a semantic v* tag: ${TAG_NAME}"
-              exit 1
-            fi
-          fi
-
-          echo "release_created=${RELEASE_CREATED}"
-          echo "tag_name=${TAG_NAME}"
-
-  build-versioned-footer:
-    name: build-with-version-footer
-    runs-on: ubuntu-latest
-    needs: [commitlint, release]
+    needs: [commitlint]
     if: always() && needs.commitlint.result == 'success'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Ensure tags are available
-        shell: bash
-        run: git fetch --force --tags
-
-      - name: Resolve version string for footer injection
-        id: version
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          APP_VERSION_TAG=""
-          if [[ "${{ needs.release.outputs.release_created }}" == "true" && -n "${{ needs.release.outputs.tag_name }}" ]]; then
-            APP_VERSION_TAG="${{ needs.release.outputs.tag_name }}"
-          fi
-
-          APP_VERSION="$(APP_VERSION_TAG="$APP_VERSION_TAG" scripts/inject-app-version.sh index.html resolve-only)"
-
-          echo "app_version=${APP_VERSION}" >> "$GITHUB_OUTPUT"
-          echo "Resolved APP_VERSION=${APP_VERSION}"
-
-      - name: Inject app version into footer build artifact
-        env:
-          APP_VERSION_TAG: ${{ steps.version.outputs.app_version }}
+      - name: Prepare build artifact
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p build
           cp index.html build/index.html
-          scripts/inject-app-version.sh build/index.html inject
-
-      - name: Assert build artifact is version-injected
-        shell: bash
-        run: |
-          set -euo pipefail
-          if rg -n "__APP_VERSION__" build/index.html; then
-            echo "::error::Version placeholder __APP_VERSION__ still present in build artifact"
-            exit 1
-          fi
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4

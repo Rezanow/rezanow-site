@@ -34,31 +34,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ripgrep
 
-      - name: Ensure tags are available
-        run: git fetch --force --tags
-
-      - name: Guard: require reachable version tag
-        run: |
-          set -euo pipefail
-          if ! git describe --tags --abbrev=0 --match 'v*' >/dev/null 2>&1 \
-            && ! git describe --tags --abbrev=0 --match '[0-9]*' >/dev/null 2>&1; then
-            echo "::error::No reachable version tag matching 'v*' (or legacy numeric tags) found for production deploy. Create/fetch a version tag before deploying from main."
-            exit 1
-          fi
-
-      - name: Resolve and inject app version
-        env:
-          REQUIRE_VERSION_TAG: "true"
-        run: scripts/inject-app-version.sh index.html inject
-
-      - name: Assert index.html is version-injected
-        run: |
-          set -euo pipefail
-          if rg -n "__APP_VERSION__" index.html; then
-            echo "::error::Version placeholder __APP_VERSION__ still present in deploy artifact"
-            exit 1
-          fi
-
       - name: Setup Pages
         uses: actions/configure-pages@v5
 

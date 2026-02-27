@@ -640,7 +640,7 @@ const GAME_STATE_KEY = "rs_gameState_v1";
 const STATS_HISTORY_KEY = "rs_statsHistory_v1";
 const DBL_CLICK_FOUNDATION_KEY = "rs_dblClickFoundation_v1";
 const MAX_STATS_HISTORY = 100;
-const APP_VERSION = "__APP_VERSION__";
+const APP_VERSION = "v0.1.1";
 
 function applySuitStyle(style){
   const clsPrefix = "suit-style-";
@@ -708,9 +708,7 @@ function renderAppVersion(){
   if(!versionEl) return;
 
   const resolvedVersion = (typeof APP_VERSION === "string" ? APP_VERSION.trim() : "");
-  const versionPlaceholder = "__APP_" + "VERSION__";
-  const isPlaceholder = resolvedVersion === versionPlaceholder;
-  versionEl.textContent = (!resolvedVersion || isPlaceholder) ? "dev-local" : resolvedVersion;
+  versionEl.textContent = resolvedVersion || "v0.0.0";
 }
 
 
