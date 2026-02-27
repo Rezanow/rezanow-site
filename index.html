@@ -850,6 +850,7 @@ function applyDealVariant(variantKey){
   const sel = document.getElementById("dealVariantSelect");
   if(sel && sel.value !== variantKey) sel.value = variantKey;
   try { localStorage.setItem(DEAL_VARIANT_KEY, variantKey); } catch(e) {}
+  scheduleFit();
 }
 
 function initDealVariantUI(){
@@ -1837,13 +1838,26 @@ function fit(){
   const baseH = baseW * 1.45;  // card height ratio
   const baseGap = 24;          // stack gap
   const baseColGap = 8;        // column gap
+  const topRowGap = 4;         // .foundations-row/.hand-row gap
+  const topSectionGap = 12;    // .top-section gap between zone groups
   const cardBorder = 2;        // rough border allowance
 
   const needW = (W, CG) => 7*(W + cardBorder) + 6*CG;
   const pileH = (N, H, G) => H + (N - 1) * G;
 
+  const currentConfig = getCurrentDealConfig();
+  const foundationSlots = 4;
+  const freeCellSlots = currentConfig.freeCells;
+
+  const foundationNeedW = foundationSlots * (baseW + cardBorder) + Math.max(0, foundationSlots - 1) * topRowGap;
+  const handNeedW = freeCellSlots > 0
+    ? freeCellSlots * (baseW + cardBorder) + Math.max(0, freeCellSlots - 1) * topRowGap
+    : 0;
+  const topSectionNeedW = foundationNeedW + handNeedW + (freeCellSlots > 0 ? topSectionGap : 0);
+
   // Compute a single scale factor that satisfies both width and height.
-  const targetNeedW = needW(baseW, baseColGap);
+  const tableauNeedW = needW(baseW, baseColGap);
+  const targetNeedW = Math.max(tableauNeedW, topSectionNeedW);
   const targetNeedH = pileH(maxLen, baseH, baseGap);
 
   // Avoid division by zero in pathological cases.
