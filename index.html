@@ -161,14 +161,23 @@ width: 100%;
     }
     .card:active { transform: scale(0.96); }
     .card.back {
-      background: repeating-linear-gradient(
-        45deg,
-        var(--card-back-stripe-dark),
-        var(--card-back-stripe-dark) 5px,
-        var(--card-back-stripe-light) 5px,
-        var(--card-back-stripe-light) 10px
-      );
+      background:
+        repeating-linear-gradient(45deg, var(--card-back-a), var(--card-back-a) 5px, var(--card-back-b) 5px, var(--card-back-b) 10px);
       border: 1px solid var(--card-back-border);
+      position: relative;
+      overflow: hidden;
+    }
+    .card.back::after {
+      content: "";
+      position: absolute;
+      inset: 8px;
+      border-radius: calc(var(--radius) - 1px);
+      border: 1px solid var(--card-back-accent);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+      background:
+        radial-gradient(circle at center, var(--card-back-accent) 0 12%, transparent 13% 100%);
+      opacity: 0.8;
+      pointer-events: none;
     }
     
     .val-tl { 
@@ -317,10 +326,33 @@ width: 100%;
     body.suit-style-normal .card.face{ /* baseline */ }
 
     /* A) Color Background (lighter) */
-    body.suit-style-color .card.face.suit-spades{ background: var(--face-spade-light); }
-    body.suit-style-color .card.face.suit-hearts{ background: var(--face-heart-light); }
-    body.suit-style-color .card.face.suit-diamonds{ background: var(--face-diamond-light); }
-    body.suit-style-color .card.face.suit-clubs{ background: var(--face-club-light); }
+    :root{
+      --s-spade: #cfe3ff;
+      --s-heart: #ffd0d0;
+      --s-diamond: #ffe7b8;
+      --s-club: #d6f5df;
+
+      --s-spade-dark: #1f3a5a;
+      --s-heart-dark: #7a0b0b;
+      --s-diamond-dark: #8a5a00;
+      --s-club-dark: #0b4d22;
+
+      /* High contrast suit palette (improves differentiation, not universal CVD coverage). */
+      --s-spade-cb: #0A3A8A;
+      --s-heart-cb: #B71C1C;
+      --s-diamond-cb: #FFD54F;
+      --s-club-cb: #00695C;
+
+      --card-back-a: #2f3346;
+      --card-back-b: #1f2434;
+      --card-back-border: #d8dae2;
+      --card-back-accent: rgba(245, 246, 255, 0.25);
+    }
+
+    body.suit-style-color .card.face.suit-spades{ background: var(--s-spade); }
+    body.suit-style-color .card.face.suit-hearts{ background: var(--s-heart); }
+    body.suit-style-color .card.face.suit-diamonds{ background: var(--s-diamond); }
+    body.suit-style-color .card.face.suit-clubs{ background: var(--s-club); }
 
     /* B) Dark Background */
     body.suit-style-dark .card.face{ color:#fff !important; }
@@ -404,6 +436,12 @@ width: 100%;
     body.suit-style-cb .card.face:not(.suit-diamonds) .suit-tr{ text-shadow: 0 1px 1px rgba(0,0,0,0.4); }
     body.suit-style-cb .card.face.suit-diamonds .val-tl,
     body.suit-style-cb .card.face.suit-diamonds .suit-tr{ text-shadow: 0 1px 0 rgba(255,255,255,0.35); }
+    body.suit-style-cb {
+      --card-back-a: #4b2d6b;
+      --card-back-b: #311b4a;
+      --card-back-border: #e8ddf7;
+      --card-back-accent: rgba(255,255,255,0.32);
+    }
 
   
 /* --- Responsive header + mobile menu --- */
