@@ -48,14 +48,13 @@
       background: #205c36;
       color: #fff;
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      overflow: hidden;
-      height: 100vh; width: 100vw;
-      height: 100dvh;
+      overflow-y: auto;
+      min-height: 100dvh;
       display: flex;
       flex-direction: column;
       user-select: none;
       -webkit-user-select: none;
-      touch-action: none;
+      touch-action: auto;
     }
     header {
       flex-shrink: 0; 
@@ -98,8 +97,10 @@
       min-height: 0;
  
       display: flex; flex-direction: column; 
-      padding: 8px calc(4px + var(--safe-right)) calc(28px + var(--safe-bottom)) calc(4px + var(--safe-left));
-width: 100%;
+      padding: 8px calc(4px + var(--safe-right)) calc(44px + var(--safe-bottom)) calc(4px + var(--safe-left));
+      width: 100%;
+      overflow-y: auto;
+      overflow-x: hidden;
     }
 
     .app-version {
@@ -131,6 +132,8 @@ width: 100%;
     
     .zone-tableau {
         flex-grow: 1; position: relative;
+        overflow-y: auto;
+        overflow-x: hidden;
     }
 
     .tableau-row { 
@@ -159,6 +162,7 @@ width: 100%;
       border: 1px solid #bbb;
       z-index: 10;
       transition: transform 0.1s;
+      touch-action: none;
     }
     .card:active { transform: scale(0.96); }
     .card.back {
@@ -1821,16 +1825,12 @@ function fit(){
 
   // Available space (account for header + safe areas already in CSS heights)
   const availW = app.clientWidth;
-  const availH = app.clientHeight;
-
   // Track actual header height (it can wrap on mobile) so the play area never hides behind it.
   const headerEl = document.querySelector('header');
   if(headerEl){
     const hh = Math.ceil(headerEl.getBoundingClientRect().height);
     document.documentElement.style.setProperty('--header-h', hh + "px");
   }
-
-  const maxLen = Math.max(...tableau.map(p=>p.length || 1));
 
   // "Design" dimensions (desktop-ish baseline), then scale down as needed.
   const baseW = 84;            // card width
@@ -1842,8 +1842,6 @@ function fit(){
   const cardBorder = 2;        // rough border allowance
 
   const needW = (W, CG) => 7*(W + cardBorder) + 6*CG;
-  const pileH = (N, H, G) => H + (N - 1) * G;
-
   const currentConfig = getCurrentDealConfig();
   const foundationSlots = 4;
   const freeCellSlots = currentConfig.freeCells;
@@ -1854,15 +1852,13 @@ function fit(){
     : 0;
   const topSectionNeedW = foundationNeedW + handNeedW + (freeCellSlots > 0 ? topSectionGap : 0);
 
-  // Compute a single scale factor that satisfies both width and height.
+  // Compute a scale factor based on width so the tableau still fits horizontally.
   const tableauNeedW = needW(baseW, baseColGap);
   const targetNeedW = Math.max(tableauNeedW, topSectionNeedW);
-  const targetNeedH = pileH(maxLen, baseH, baseGap);
 
   // Avoid division by zero in pathological cases.
   const sW = targetNeedW ? (availW / targetNeedW) : 1;
-  const sH = targetNeedH ? (availH / targetNeedH) : 1;
-  const s = Math.min(1, sW, sH);
+  const s = Math.min(1, sW);
 
   // Clamp for usability (phone → desktop).
   const w = Math.round(Math.min(120, Math.max(34, baseW * s)));
