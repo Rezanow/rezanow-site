@@ -651,6 +651,17 @@ header .controls > *{ flex: 0 0 auto; }
       <label class="suit-style-label dblclick-foundation-label" for="doubleClickFoundationToggle">Double-click to Foundation</label>
       <input id="doubleClickFoundationToggle" type="checkbox" title="Double-click a top card or free-cell card to move it to a valid foundation" />
 
+      <label class="suit-style-label" for="dealVariantSelect">Free Cells</label>
+      <select id="dealVariantSelect" title="Choose how many free cells are available at the start">
+        <option value="cells0">0</option>
+        <option value="cells1">1</option>
+        <option value="cells2">2</option>
+        <option value="cells3" selected>3</option>
+        <option value="cells4">4</option>
+      </select>
+
+      <button id="newGameBtn">New Game</button>
+
       
       <button id="rulesBtn" title="View rules">Rules</button>
       <button id="statsBtn" title="View stats">Stats</button>
@@ -684,6 +695,7 @@ header .controls > *{ flex: 0 0 auto; }
           <div class="hand-slot" data-id="0"></div>
           <div class="hand-slot" data-id="1"></div>
           <div class="hand-slot" data-id="2"></div>
+          <div class="hand-slot" data-id="3"></div>
         </div>
       </div>
     </div>
@@ -748,8 +760,108 @@ const SUIT_STYLE_KEY = "rs_suitStyle_v1";
 const GAME_STATE_KEY = "rs_gameState_v1";
 const STATS_HISTORY_KEY = "rs_statsHistory_v1";
 const DBL_CLICK_FOUNDATION_KEY = "rs_dblClickFoundation_v1";
+const DEAL_VARIANT_KEY = "rs_dealVariant_v1";
 const MAX_STATS_HISTORY = 100;
-const APP_VERSION = "v0.1.6";
+const APP_VERSION = "v0.2.0";
+
+const DEAL_VARIANTS = {
+  cells0: {
+    freeCells: 0,
+    columns: [
+      { total: 7, faceDown: 0 },
+      { total: 7, faceDown: 1 },
+      { total: 7, faceDown: 2 },
+      { total: 7, faceDown: 3 },
+      { total: 8, faceDown: 4 },
+      { total: 8, faceDown: 5 },
+      { total: 8, faceDown: 6 }
+    ]
+  },
+  cells1: {
+    freeCells: 1,
+    columns: [
+      { total: 7, faceDown: 0 },
+      { total: 7, faceDown: 1 },
+      { total: 7, faceDown: 2 },
+      { total: 7, faceDown: 3 },
+      { total: 7, faceDown: 4 },
+      { total: 8, faceDown: 5 },
+      { total: 8, faceDown: 6 }
+    ]
+  },
+  cells2: {
+    freeCells: 2,
+    columns: [
+      { total: 7, faceDown: 0 },
+      { total: 7, faceDown: 1 },
+      { total: 7, faceDown: 2 },
+      { total: 7, faceDown: 3 },
+      { total: 7, faceDown: 4 },
+      { total: 7, faceDown: 5 },
+      { total: 8, faceDown: 6 }
+    ]
+  },
+  cells3: {
+    freeCells: 3,
+    columns: [
+      { total: 7, faceDown: 0 },
+      { total: 7, faceDown: 1 },
+      { total: 7, faceDown: 2 },
+      { total: 7, faceDown: 3 },
+      { total: 7, faceDown: 4 },
+      { total: 7, faceDown: 5 },
+      { total: 7, faceDown: 6 }
+    ]
+  },
+  cells4: {
+    freeCells: 4,
+    columns: [
+      { total: 6, faceDown: 0 },
+      { total: 7, faceDown: 1 },
+      { total: 7, faceDown: 2 },
+      { total: 7, faceDown: 3 },
+      { total: 7, faceDown: 4 },
+      { total: 7, faceDown: 5 },
+      { total: 7, faceDown: 6 }
+    ]
+  }
+};
+
+let currentDealVariantKey = "cells3";
+
+function getDealVariantConfig(variantKey){
+  return DEAL_VARIANTS[variantKey] || DEAL_VARIANTS.cells3;
+}
+
+function getCurrentDealConfig(){
+  return getDealVariantConfig(currentDealVariantKey);
+}
+
+function loadDealVariantPreference(){
+  try {
+    const saved = localStorage.getItem(DEAL_VARIANT_KEY);
+    if(saved && DEAL_VARIANTS[saved]) currentDealVariantKey = saved;
+  } catch(e) {}
+}
+
+function applyDealVariant(variantKey){
+  if(!DEAL_VARIANTS[variantKey]) return;
+  currentDealVariantKey = variantKey;
+  const sel = document.getElementById("dealVariantSelect");
+  if(sel && sel.value !== variantKey) sel.value = variantKey;
+  try { localStorage.setItem(DEAL_VARIANT_KEY, variantKey); } catch(e) {}
+}
+
+function initDealVariantUI(){
+  loadDealVariantPreference();
+  const sel = document.getElementById("dealVariantSelect");
+  if(!sel) return;
+  sel.value = currentDealVariantKey;
+  sel.addEventListener("change", () => {
+    applyDealVariant(sel.value);
+    start();
+  });
+}
 function applySuitStyle(style){
   const clsPrefix = "suit-style-";
   // remove existing suit-style-* classes
@@ -827,7 +939,7 @@ function renderAppVersion(){
 
 let tableau=[[],[],[],[],[],[],[]];
 let foundations=[[],[],[],[]];
-let hand=[null,null,null];
+let hand=[];
 let historyStack=[];
 let selected=null;
 let moveCount=0;
@@ -848,6 +960,7 @@ function persistGameState(){
     tableau,
     foundations,
     hand,
+    currentDealVariantKey,
     historyStack: persistedHistory,
     moveCount,
     undoCount,
@@ -873,7 +986,15 @@ function loadPersistedGameState(){
     if(!raw) return false;
     const parsed = JSON.parse(raw);
     if(!parsed || !Array.isArray(parsed.tableau) || !Array.isArray(parsed.foundations) || !Array.isArray(parsed.hand)) return false;
-    if(parsed.tableau.length !== 7 || parsed.foundations.length !== 4 || parsed.hand.length !== 3) return false;
+    if(parsed.tableau.length !== 7 || parsed.foundations.length !== 4) return false;
+
+    const persistedVariantKey = parsed.currentDealVariantKey && DEAL_VARIANTS[parsed.currentDealVariantKey]
+      ? parsed.currentDealVariantKey
+      : (parsed.hand.length >= 0 && parsed.hand.length <= 4 ? `cells${parsed.hand.length}` : "cells3");
+    applyDealVariant(persistedVariantKey);
+
+    const expectedFreeCells = getCurrentDealConfig().freeCells;
+    if(parsed.hand.length !== expectedFreeCells) return false;
 
     tableau = parsed.tableau;
     foundations = parsed.foundations;
@@ -1034,6 +1155,7 @@ function save(){
     tableau,
     foundations,
     hand,
+    currentDealVariantKey,
     moveCount,
     undoCount,
     elapsedMs,
@@ -1068,14 +1190,24 @@ function undo(){
 function start(){
   if(hasActiveRunToRecordAsLoss()) recordGameResult('loss');
   closeModals();
-  tableau=[[],[],[],[],[],[],[]]; foundations=[[],[],[],[]]; hand=[null,null,null]; historyStack=[]; selected=null;
+  const config = getCurrentDealConfig();
+  tableau=[[],[],[],[],[],[],[]]; foundations=[[],[],[],[]]; hand=Array(config.freeCells).fill(null); historyStack=[]; selected=null;
   resetRunStats();
   const deck=makeDeck(); shuffle(deck);
   for(let i=0;i<7;i++){
-    for(let d=0;d<i;d++){const c=deck.pop();c.faceUp=false;tableau[i].push(c);}
-    for(let u=0;u<7-i;u++){const c=deck.pop();c.faceUp=true;tableau[i].push(c);}
+    const col = config.columns[i];
+    for(let d=0;d<col.faceDown;d++){
+      const c=deck.pop();
+      c.faceUp=false;
+      tableau[i].push(c);
+    }
+    for(let u=0;u<col.total-col.faceDown;u++){
+      const c=deck.pop();
+      c.faceUp=true;
+      tableau[i].push(c);
+    }
   }
-  for(let k=0;k<3;k++) hand[k]=deck.pop();
+  for(let k=0;k<hand.length;k++) hand[k]=deck.pop();
   persistGameState();
   startTimer();
   fit();
@@ -1244,7 +1376,7 @@ function autoPlay(){
   let moved = true; let loops = 0;
   while(moved && loops < 50){ 
     moved = false; loops++;
-    for(let h=0; h<3; h++){
+    for(let h=0; h<hand.length; h++){
       if(hand[h] && tryFoundation(hand[h], "hand", h)) { moved=true; break; }
     }
     if(moved) continue;
@@ -1295,7 +1427,7 @@ function findAnyMove(highlight){
   // Returns true if a move exists. If highlight=true, it highlights it.
   
   // 1. Hand -> Foundation
-  for(let i=0; i<3; i++){
+  for(let i=0; i<hand.length; i++){
     if(hand[i]){
       for(let f=0; f<4; f++){
         if(canFoundation(hand[i], foundations[f])){
@@ -1318,7 +1450,7 @@ function findAnyMove(highlight){
     }
   }
   // 3. Hand -> Tableau
-  for(let i=0; i<3; i++){
+  for(let i=0; i<hand.length; i++){
     if(hand[i]){
       for(let t=0; t<7; t++){
         const tp = tableau[t];
@@ -1368,7 +1500,7 @@ function findAnyMove(highlight){
   // Pass 2: fallback still excludes j === 0 king-to-empty shuffles.
   if(findPileToTableauMove(true)) return true;
   // 5. Pile Top -> Hand (Only if Hand slot empty)
-  for(let h=0; h<3; h++){
+  for(let h=0; h<hand.length; h++){
       if(!hand[h]){
           // Can we move a top card to hand? Yes.
           // Is it useful? Maybe to uncover a card. Any visible top card on a pile > 1 deep is a candidate.
@@ -1642,6 +1774,9 @@ function render(){
   document.querySelectorAll('.hand-slot').forEach(slot => {
     slot.innerHTML = "";
     const i = parseInt(slot.dataset.id);
+    const isActiveSlot = i < hand.length;
+    slot.style.display = isActiveSlot ? '' : 'none';
+    if(!isActiveSlot) return;
     slot.ondragover = handleDragOver; slot.ondragenter = handleDragEnter;
     slot.ondragleave = handleDragLeave; slot.ondrop = (e) => handleDrop(e, 'hand', i);
     slot.onclick = () => cardClick('hand', i);
@@ -1748,6 +1883,7 @@ function scheduleFit(){
 }
 document.getElementById("undoBtn").onclick = undo;
 document.getElementById("autoBtn").onclick = autoPlay;
+document.getElementById("newGameBtn").onclick = start;
 document.getElementById("giveUpBtn").onclick = () => {
   if(hasActiveRunToRecordAsLoss() && !runResultRecorded) recordGameResult('loss');
   document.getElementById('modalLose').classList.add('active');
@@ -1773,6 +1909,9 @@ try {
   ro.observe(document.body);
 } catch(e) {}
 
+loadDealVariantPreference();
+applyDealVariant(currentDealVariantKey);
+
 if(loadPersistedGameState()){
   startTimer();
   fit();
@@ -1784,6 +1923,7 @@ renderStatsModal();
 
 initSuitStyleUI();
 initDoubleClickFoundationUI();
+initDealVariantUI();
 renderAppVersion();
 const headerEl = document.querySelector('header');
 const menuToggleBtn = document.getElementById('menuToggle');
