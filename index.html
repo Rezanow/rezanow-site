@@ -18,6 +18,29 @@
       --stack-gap: 24px;
       --col-gap: 8px;
       --radius: 6px;
+
+      /*
+       * Keep card-back hues outside all face hue families.
+       * Preserve strong luminance separation so back vs face is unmistakable.
+       */
+      --card-back-stripe-dark: #1a237e;
+      --card-back-stripe-light: #283593;
+      --card-back-border: #eee;
+
+      --face-spade-light: #cfe3ff;
+      --face-heart-light: #ffd0d0;
+      --face-diamond-light: #ffe7b8;
+      --face-club-light: #d6f5df;
+
+      --face-spade-dark: #1f3a5a;
+      --face-heart-dark: #7a0b0b;
+      --face-diamond-dark: #8a5a00;
+      --face-club-dark: #0b4d22;
+
+      --face-spade-high-contrast: #0A3A8A;
+      --face-heart-high-contrast: #B71C1C;
+      --face-diamond-high-contrast: #FFD54F;
+      --face-club-high-contrast: #00695C;
     }
     * { box-sizing: border-box; }
     body {
@@ -138,8 +161,14 @@ width: 100%;
     }
     .card:active { transform: scale(0.96); }
     .card.back {
-      background: repeating-linear-gradient(45deg, #1a237e, #1a237e 5px, #283593 5px, #283593 10px);
-      border: 1px solid #eee;
+      background: repeating-linear-gradient(
+        45deg,
+        var(--card-back-stripe-dark),
+        var(--card-back-stripe-dark) 5px,
+        var(--card-back-stripe-light) 5px,
+        var(--card-back-stripe-light) 10px
+      );
+      border: 1px solid var(--card-back-border);
     }
     
     .val-tl { 
@@ -288,42 +317,24 @@ width: 100%;
     body.suit-style-normal .card.face{ /* baseline */ }
 
     /* A) Color Background (lighter) */
-    :root{
-      --s-spade: #cfe3ff;
-      --s-heart: #ffd0d0;
-      --s-diamond: #ffe7b8;
-      --s-club: #d6f5df;
-
-      --s-spade-dark: #1f3a5a;
-      --s-heart-dark: #7a0b0b;
-      --s-diamond-dark: #8a5a00;
-      --s-club-dark: #0b4d22;
-
-      /* High contrast suit palette (improves differentiation, not universal CVD coverage). */
-      --s-spade-cb: #0A3A8A;
-      --s-heart-cb: #B71C1C;
-      --s-diamond-cb: #FFD54F;
-      --s-club-cb: #00695C;
-    }
-
-    body.suit-style-color .card.face.suit-spades{ background: var(--s-spade); }
-    body.suit-style-color .card.face.suit-hearts{ background: var(--s-heart); }
-    body.suit-style-color .card.face.suit-diamonds{ background: var(--s-diamond); }
-    body.suit-style-color .card.face.suit-clubs{ background: var(--s-club); }
+    body.suit-style-color .card.face.suit-spades{ background: var(--face-spade-light); }
+    body.suit-style-color .card.face.suit-hearts{ background: var(--face-heart-light); }
+    body.suit-style-color .card.face.suit-diamonds{ background: var(--face-diamond-light); }
+    body.suit-style-color .card.face.suit-clubs{ background: var(--face-club-light); }
 
     /* B) Dark Background */
     body.suit-style-dark .card.face{ color:#fff !important; }
-    body.suit-style-dark .card.face.suit-spades{ background: var(--s-spade-dark); border-color: rgba(255,255,255,.35); }
-    body.suit-style-dark .card.face.suit-hearts{ background: var(--s-heart-dark); border-color: rgba(255,255,255,.35); }
-    body.suit-style-dark .card.face.suit-diamonds{ background: var(--s-diamond-dark); border-color: rgba(255,255,255,.35); }
-    body.suit-style-dark .card.face.suit-clubs{ background: var(--s-club-dark); border-color: rgba(255,255,255,.35); }
+    body.suit-style-dark .card.face.suit-spades{ background: var(--face-spade-dark); border-color: rgba(255,255,255,.35); }
+    body.suit-style-dark .card.face.suit-hearts{ background: var(--face-heart-dark); border-color: rgba(255,255,255,.35); }
+    body.suit-style-dark .card.face.suit-diamonds{ background: var(--face-diamond-dark); border-color: rgba(255,255,255,.35); }
+    body.suit-style-dark .card.face.suit-clubs{ background: var(--face-club-dark); border-color: rgba(255,255,255,.35); }
 
     /* C) Color + Border (strong edge cue) */
     body.suit-style-border .card.face{ border-width: 3px; }
-    body.suit-style-border .card.face.suit-spades{ background: var(--s-spade); border-color: #1f3a5a; }
-    body.suit-style-border .card.face.suit-hearts{ background: var(--s-heart); border-color: #7a0b0b; }
-    body.suit-style-border .card.face.suit-diamonds{ background: var(--s-diamond); border-color: #8a5a00; }
-    body.suit-style-border .card.face.suit-clubs{ background: var(--s-club); border-color: #0b4d22; }
+    body.suit-style-border .card.face.suit-spades{ background: var(--face-spade-light); border-color: var(--face-spade-dark); }
+    body.suit-style-border .card.face.suit-hearts{ background: var(--face-heart-light); border-color: var(--face-heart-dark); }
+    body.suit-style-border .card.face.suit-diamonds{ background: var(--face-diamond-light); border-color: var(--face-diamond-dark); }
+    body.suit-style-border .card.face.suit-clubs{ background: var(--face-club-light); border-color: var(--face-club-dark); }
 
     /* Shared watermark/pattern infrastructure */
     body.suit-style-watermark .card.face,
@@ -346,36 +357,36 @@ width: 100%;
     }
 
     /* D) Color + Watermark */
-    body.suit-style-watermark .card.face.suit-spades{ background: var(--s-spade); }
-    body.suit-style-watermark .card.face.suit-hearts{ background: var(--s-heart); }
-    body.suit-style-watermark .card.face.suit-diamonds{ background: var(--s-diamond); }
-    body.suit-style-watermark .card.face.suit-clubs{ background: var(--s-club); }
+    body.suit-style-watermark .card.face.suit-spades{ background: var(--face-spade-light); }
+    body.suit-style-watermark .card.face.suit-hearts{ background: var(--face-heart-light); }
+    body.suit-style-watermark .card.face.suit-diamonds{ background: var(--face-diamond-light); }
+    body.suit-style-watermark .card.face.suit-clubs{ background: var(--face-club-light); }
 
     /* E) Color + Pattern overlays */
     body.suit-style-pattern .card.face.suit-spades{
       background:
         repeating-linear-gradient(135deg, rgba(0,0,0,0.10), rgba(0,0,0,0.10) 6px, rgba(0,0,0,0.00) 6px, rgba(0,0,0,0.00) 12px),
-        var(--s-spade);
+        var(--face-spade-light);
     }
     body.suit-style-pattern .card.face.suit-hearts{
       background:
         radial-gradient(circle at 6px 6px, rgba(0,0,0,0.12) 2px, rgba(0,0,0,0.00) 3px),
         radial-gradient(circle at 16px 16px, rgba(0,0,0,0.12) 2px, rgba(0,0,0,0.00) 3px),
-        var(--s-heart);
+        var(--face-heart-light);
       background-size: 20px 20px;
     }
     body.suit-style-pattern .card.face.suit-diamonds{
       background:
         repeating-linear-gradient(45deg, rgba(0,0,0,0.10), rgba(0,0,0,0.10) 3px, rgba(0,0,0,0.00) 3px, rgba(0,0,0,0.00) 9px),
         repeating-linear-gradient(-45deg, rgba(0,0,0,0.06), rgba(0,0,0,0.06) 3px, rgba(0,0,0,0.00) 3px, rgba(0,0,0,0.00) 9px),
-        var(--s-diamond);
+        var(--face-diamond-light);
     }
     body.suit-style-pattern .card.face.suit-clubs{
       background:
         linear-gradient(rgba(0,0,0,0.06), rgba(0,0,0,0.06)),
         repeating-linear-gradient(0deg, rgba(0,0,0,0.12), rgba(0,0,0,0.12) 2px, rgba(0,0,0,0.00) 2px, rgba(0,0,0,0.00) 10px),
         repeating-linear-gradient(90deg, rgba(0,0,0,0.06), rgba(0,0,0,0.06) 2px, rgba(0,0,0,0.00) 2px, rgba(0,0,0,0.00) 10px),
-        var(--s-club);
+        var(--face-club-light);
     }
 
     /* F) Big Corner Glyphs (max clarity without recolor) */
@@ -385,10 +396,10 @@ width: 100%;
 
     /* G) High-contrast palette (also boosts glyph sizes a bit) */
     body.suit-style-cb .card.face{ color:#fff !important; border-color: rgba(255,255,255,.35); }
-    body.suit-style-cb .card.face.suit-spades{ background: var(--s-spade-cb); }
-    body.suit-style-cb .card.face.suit-hearts{ background: var(--s-heart-cb); }
-    body.suit-style-cb .card.face.suit-diamonds{ background: var(--s-diamond-cb); color:#111 !important; border-color: rgba(0,0,0,.5); }
-    body.suit-style-cb .card.face.suit-clubs{ background: var(--s-club-cb); }
+    body.suit-style-cb .card.face.suit-spades{ background: var(--face-spade-high-contrast); }
+    body.suit-style-cb .card.face.suit-hearts{ background: var(--face-heart-high-contrast); }
+    body.suit-style-cb .card.face.suit-diamonds{ background: var(--face-diamond-high-contrast); color:#111 !important; border-color: rgba(0,0,0,.5); }
+    body.suit-style-cb .card.face.suit-clubs{ background: var(--face-club-high-contrast); }
     body.suit-style-cb .card.face:not(.suit-diamonds) .val-tl,
     body.suit-style-cb .card.face:not(.suit-diamonds) .suit-tr{ text-shadow: 0 1px 1px rgba(0,0,0,0.4); }
     body.suit-style-cb .card.face.suit-diamonds .val-tl,
