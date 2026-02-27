@@ -299,10 +299,11 @@ width: 100%;
       --s-diamond-dark: #8a5a00;
       --s-club-dark: #0b4d22;
 
-      --s-spade-cb: #0D47A1;
-      --s-heart-cb: #D32F2F;
-      --s-diamond-cb: #F9A825;
-      --s-club-cb: #00796B;
+      /* High contrast suit palette (improves differentiation, not universal CVD coverage). */
+      --s-spade-cb: #0A3A8A;
+      --s-heart-cb: #B71C1C;
+      --s-diamond-cb: #FFD54F;
+      --s-club-cb: #00695C;
     }
 
     body.suit-style-color .card.face.suit-spades{ background: var(--s-spade); }
@@ -383,12 +384,15 @@ width: 100%;
     body.suit-style-corners .val-center{ opacity: 0.35; }
 
     /* G) Colorblind-safe palette (also boosts glyph sizes a bit) */
-    body.suit-style-cb .card.face{ color:#fff !important; border-color: rgba(255,255,255,.35); }
+    body.suit-style-cb .card.face{ color:#fff !important; border-color: rgba(255,255,255,.4); }
     body.suit-style-cb .card.face.suit-spades{ background: var(--s-spade-cb); }
     body.suit-style-cb .card.face.suit-hearts{ background: var(--s-heart-cb); }
-    body.suit-style-cb .card.face.suit-diamonds{ background: var(--s-diamond-cb); color:#111 !important; border-color: rgba(0,0,0,.25); }
+    body.suit-style-cb .card.face.suit-diamonds{ background: var(--s-diamond-cb); color:#111 !important; border-color: rgba(0,0,0,.5); }
     body.suit-style-cb .card.face.suit-clubs{ background: var(--s-club-cb); }
-    body.suit-style-cb .val-tl, body.suit-style-cb .suit-tr{ text-shadow: 0 1px 1px rgba(0,0,0,0.35); }
+    body.suit-style-cb .card.face:not(.suit-diamonds) .val-tl,
+    body.suit-style-cb .card.face:not(.suit-diamonds) .suit-tr{ text-shadow: 0 1px 1px rgba(0,0,0,0.4); }
+    body.suit-style-cb .card.face.suit-diamonds .val-tl,
+    body.suit-style-cb .card.face.suit-diamonds .suit-tr{ text-shadow: 0 1px 0 rgba(255,255,255,0.35); }
 
   
 /* --- Responsive header + mobile menu --- */
