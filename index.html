@@ -513,12 +513,8 @@ header .controls > *{ flex: 0 0 auto; }
 }
 .rules-content ul{ margin: 6px 0 8px 18px; }
 .rules-content ul.examples{ margin-top: 4px; }
-.rules-content code{
-  background: rgba(0,0,0,0.06);
-  padding: 1px 4px;
-  border-radius: 4px;
-  font-weight: 700;
-}
+.rules-content .suit-red{ color: #c62828; font-weight: 700; }
+.rules-content .suit-black{ color: #111; font-weight: 700; }
 
 </style>
 </head>
@@ -1774,10 +1770,10 @@ document.addEventListener('DOMContentLoaded', () => {
     </ul>
 
     <p><b>Example</b></p>
-    <p><code>K♠<br>9♥ &larr; selected<br>7♦<br>3♣<br>2♣</code></p>
-    <p>Selecting <b>9♥</b> moves:</p>
-    <p><code>9♥<br>7♦<br>3♣<br>2♣</code></p>
-    <p>Only <b>9♥</b> must legally fit where you place it.</p>
+    <p>K<span class="suit-black">♠</span><br>9<span class="suit-red">♥</span> &larr; selected<br>7<span class="suit-red">♦</span><br>3<span class="suit-black">♣</span><br>2<span class="suit-black">♣</span></p>
+    <p>Selecting <b>9<span class="suit-red">♥</span></b> moves:</p>
+    <p>9<span class="suit-red">♥</span><br>7<span class="suit-red">♦</span><br>3<span class="suit-black">♣</span><br>2<span class="suit-black">♣</span></p>
+    <p>Only <b>9<span class="suit-red">♥</span></b> must legally fit where you place it.</p>
 
     <h3>Building on the Tableau</h3>
     <p>Cards must follow the game’s build rule (e.g., descending by suit).</p>
