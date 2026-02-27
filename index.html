@@ -552,7 +552,6 @@ header .controls > *{ flex: 0 0 auto; }
 <button id="autoBtn">Auto</button>
       <button id="giveUpBtn">Give Up</button>
       <button id="undoBtn">Undo</button>
-      <button id="newGameBtn">New</button>
     </div>
   </header>
 
@@ -1637,7 +1636,6 @@ function scheduleFit(){
     render();
   });
 }
-document.getElementById("newGameBtn").onclick = start;
 document.getElementById("undoBtn").onclick = undo;
 document.getElementById("autoBtn").onclick = autoPlay;
 document.getElementById("giveUpBtn").onclick = () => {
@@ -1720,7 +1718,7 @@ document.addEventListener('keydown', (event) => {
   menuToggleBtn?.focus();
 });
 
-['newGameBtn', 'autoBtn', 'giveUpBtn'].forEach((id) => {
+['autoBtn', 'giveUpBtn'].forEach((id) => {
   const actionBtn = document.getElementById(id);
   if(!actionBtn) return;
   actionBtn.addEventListener('click', () => {
