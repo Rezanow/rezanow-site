@@ -1690,9 +1690,6 @@ function highlightPileCard(pileIdx, cardIdx, type){
 let dragSource = null;
 let lastTouchEndTs = 0;
 const TOUCH_CLICK_GUARD_MS = 400;
-function shouldIgnoreClickAfterTouch(){
-  return Date.now() - lastTouchEndTs < TOUCH_CLICK_GUARD_MS;
-}
 let touchClone = document.getElementById('drag-ghost');
 let touchStartCoords = {x:0, y:0};
 let isDragGesture = false;
@@ -1878,8 +1875,9 @@ function createCardEl(c, type, idx, cardIdx){
   el.ontouchmove = handleTouchMove;
   el.ontouchend = handleTouchEnd;
   el.onclick = (e) => {
+    if(Date.now() - lastTouchEndTs < TOUCH_CLICK_GUARD_MS) return;
     e.stopPropagation();
-    if(shouldIgnoreClickAfterTouch()){
+    if(Date.now() - lastTouchEndTs < TOUCH_CLICK_GUARD_MS){
       e.preventDefault();
       return;
     }
