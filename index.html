@@ -752,6 +752,53 @@ header .controls > *{ flex: 0 0 auto; }
     </div>
   </div>
 
+<!-- Rules Modal -->
+<div id="rulesModal" class="rules-modal hidden">
+  <div class="rules-content">
+    
+    <h2>How to Play</h2>
+
+    <h3>Objective</h3>
+    <p>Move all cards to the <b>foundations</b>, building each suit in ascending order from <b>Ace to King</b>.</p>
+
+    <h3>Tableau Rules</h3>
+    <p>The tableau columns are your working area.</p>
+    <ul>
+      <li>You may select <b>any face-up card</b> in a column.</li>
+      <li>When you move a card, <b>every card stacked on top of it must move with it.</b></li>
+      <li>Only the card you selected must be valid for its destination. The cards above it are not checked.</li>
+    </ul>
+
+    <p><b>Example</b></p>
+    <p>K<span class="suit-black">♠</span><br>9<span class="suit-red">♥</span> &larr; selected<br>7<span class="suit-red">♦</span><br>3<span class="suit-black">♣</span><br>2<span class="suit-black">♣</span></p>
+    <p>Selecting <b>9<span class="suit-red">♥</span></b> moves:</p>
+    <p>9<span class="suit-red">♥</span><br>7<span class="suit-red">♦</span><br>3<span class="suit-black">♣</span><br>2<span class="suit-black">♣</span></p>
+    <p>Only <b>9<span class="suit-red">♥</span></b> must legally fit where you place it.</p>
+
+    <h3>Building on the Tableau</h3>
+    <p>Cards must follow the game’s build rule (e.g., descending by suit).</p>
+    <p>Empty columns may only be filled with a <b>King</b>.</p>
+
+    <h3>Foundations</h3>
+    <ul>
+      <li>Start with an <b>Ace</b>.</li>
+      <li>Build upward by suit: Ace → 2 → 3 → … → King.</li>
+      <li>Cards placed in the foundation cannot return.</li>
+    </ul>
+
+    <h3>Cells</h3>
+    <p>Cells are single-card holding spaces.</p>
+    <ul>
+      <li>One card per cell.</li>
+      <li>Only the <b>top card</b> of a column may be moved into a cell.</li>
+      <li>Cards in cells may later move to the tableau or foundation if legal.</li>
+    </ul>
+    <p>Cells allow you to temporarily free blocked cards and create new options.</p>
+
+    <button id="closeRulesBtn">Close</button>
+  </div>
+</div>
+
 <script>
 const suits = ["♠","♥","♦","♣"];
 const ranks = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
@@ -2019,52 +2066,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 </script>
 
-<!-- Rules Modal -->
-<div id="rulesModal" class="rules-modal hidden">
-  <div class="rules-content">
-    
-    <h2>How to Play</h2>
-
-    <h3>Objective</h3>
-    <p>Move all cards to the <b>foundations</b>, building each suit in ascending order from <b>Ace to King</b>.</p>
-
-    <h3>Tableau Rules</h3>
-    <p>The tableau columns are your working area.</p>
-    <ul>
-      <li>You may select <b>any face-up card</b> in a column.</li>
-      <li>When you move a card, <b>every card stacked on top of it must move with it.</b></li>
-      <li>Only the card you selected must be valid for its destination. The cards above it are not checked.</li>
-    </ul>
-
-    <p><b>Example</b></p>
-    <p>K<span class="suit-black">♠</span><br>9<span class="suit-red">♥</span> &larr; selected<br>7<span class="suit-red">♦</span><br>3<span class="suit-black">♣</span><br>2<span class="suit-black">♣</span></p>
-    <p>Selecting <b>9<span class="suit-red">♥</span></b> moves:</p>
-    <p>9<span class="suit-red">♥</span><br>7<span class="suit-red">♦</span><br>3<span class="suit-black">♣</span><br>2<span class="suit-black">♣</span></p>
-    <p>Only <b>9<span class="suit-red">♥</span></b> must legally fit where you place it.</p>
-
-    <h3>Building on the Tableau</h3>
-    <p>Cards must follow the game’s build rule (e.g., descending by suit).</p>
-    <p>Empty columns may only be filled with a <b>King</b>.</p>
-
-    <h3>Foundations</h3>
-    <ul>
-      <li>Start with an <b>Ace</b>.</li>
-      <li>Build upward by suit: Ace → 2 → 3 → … → King.</li>
-      <li>Cards placed in the foundation cannot return.</li>
-    </ul>
-
-    <h3>Cells</h3>
-    <p>Cells are single-card holding spaces.</p>
-    <ul>
-      <li>One card per cell.</li>
-      <li>Only the <b>top card</b> of a column may be moved into a cell.</li>
-      <li>Cards in cells may later move to the tableau or foundation if legal.</li>
-    </ul>
-    <p>Cells allow you to temporarily free blocked cards and create new options.</p>
-
-    <button id="closeRulesBtn">Close</button>
-  </div>
-</div>
 
 </body>
 </html>
