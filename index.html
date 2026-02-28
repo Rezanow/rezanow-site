@@ -1591,7 +1591,7 @@ function handleTouchMove(e){
     const original = touchOriginalEl || e.target.closest('.card');
     if(original){
         const rect = original.getBoundingClientRect();
-        touchClone.innerHTML = original.innerHTML;
+        touchClone.replaceChildren(original.cloneNode(true));
         touchClone.className = "card";
         touchClone.style.width = rect.width + "px";
         touchClone.style.height = rect.height + "px";
