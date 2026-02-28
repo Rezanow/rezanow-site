@@ -1552,9 +1552,9 @@ function enumerateMoves({ includeCellShuffles=true, suppressImmediateReverse=nul
 
   const unlocksProgressMove = (pileIdx, handIdx) => {
     const simulatedState = {
-      tableau: gameState.tableau.map(p => [...p]),
+      tableau: gameState.tableau.map(p => p.map(card => ({ ...card }))),
       hand: [...gameState.hand],
-      foundations: gameState.foundations.map(p => [...p])
+      foundations: gameState.foundations.map(p => p.map(card => ({ ...card })))
     };
     const fromPile = simulatedState.tableau[pileIdx];
     const movedCard = fromPile.pop();
@@ -1907,7 +1907,10 @@ function render(){
     if(!isActiveSlot) return;
     slot.ondragover = handleDragOver; slot.ondragenter = handleDragEnter;
     slot.ondragleave = handleDragLeave; slot.ondrop = (e) => handleDrop(e, 'hand', i);
-    slot.onclick = () => cardClick('hand', i);
+    slot.onclick = (e) => {
+      if(shouldIgnoreClickAfterTouch()){ e.preventDefault(); return; }
+      cardClick('hand', i);
+    };
     if(hand[i]) slot.appendChild(createCardEl(hand[i], 'hand', i));
   });
   document.querySelectorAll('.foundation').forEach(found => {
@@ -1915,7 +1918,10 @@ function render(){
     const i = parseInt(found.dataset.id);
     found.ondragover = handleDragOver; found.ondragenter = handleDragEnter;
     found.ondragleave = handleDragLeave; found.ondrop = (e) => handleDrop(e, 'foundation', i);
-    found.onclick = () => cardClick('foundation', i);
+    found.onclick = (e) => {
+      if(shouldIgnoreClickAfterTouch()){ e.preventDefault(); return; }
+      cardClick('foundation', i);
+    };
     const p = foundations[i];
     if(p.length){
       const el = createCardEl(p[p.length-1], 'foundation', i, p.length-1);
@@ -1928,7 +1934,7 @@ function render(){
     const i = parseInt(pile.dataset.id);
     pile.ondragover = handleDragOver; pile.ondragenter = handleDragEnter;
     pile.ondragleave = handleDragLeave; pile.ondrop = (e) => handleDrop(e, 'pile', i);
-    pile.onclick = () => { if(selected) { 
+    pile.onclick = (e) => { if(shouldIgnoreClickAfterTouch()){ e.preventDefault(); return; } if(selected) { 
         if(selected.type==='pile') executePileToPile(selected.idx, selected.cardIdx, i);
         else executeHandToPile(selected.idx, i);
         selected=null; render();
