@@ -1552,9 +1552,9 @@ function enumerateMoves({ includeCellShuffles=true, suppressImmediateReverse=nul
 
   const unlocksProgressMove = (pileIdx, handIdx) => {
     const simulatedState = {
-      tableau: gameState.tableau.map(p => [...p]),
+      tableau: gameState.tableau.map(p => p.map(card => ({ ...card }))),
       hand: [...gameState.hand],
-      foundations: gameState.foundations.map(p => [...p])
+      foundations: gameState.foundations.map(p => p.map(card => ({ ...card })))
     };
     const fromPile = simulatedState.tableau[pileIdx];
     const movedCard = fromPile.pop();
@@ -1688,6 +1688,11 @@ function highlightPileCard(pileIdx, cardIdx, type){
 
 /* --- INTERACTION --- */
 let dragSource = null;
+let lastTouchEndTs = 0;
+const TOUCH_CLICK_GUARD_MS = 400;
+function shouldIgnoreClickAfterTouch(){
+  return Date.now() - lastTouchEndTs < TOUCH_CLICK_GUARD_MS;
+}
 let touchClone = document.getElementById('drag-ghost');
 let touchStartCoords = {x:0, y:0};
 let isDragGesture = false;
@@ -1719,6 +1724,7 @@ function handleDrop(e, targetType, targetIdx){
 function handleTouchStart(e, type, idx, cardIdx){
   clearHints();
   if(type === 'pile' && !tableau[idx][cardIdx].faceUp) return;
+  e.preventDefault();
   const touch = e.touches[0];
   touchStartCoords = {x: touch.clientX, y: touch.clientY};
   isDragGesture = false;
@@ -1765,6 +1771,7 @@ function handleTouchEnd(e){
       let tIdx = parseInt(target.dataset.id);
       commitMove(tType, tIdx);
     } else render();
+    lastTouchEndTs = Date.now();
   } else {
     e.preventDefault();
     if(tryAutoMoveFromTap(dragSource.type, dragSource.idx, dragSource.cardIdx)){
@@ -1774,6 +1781,7 @@ function handleTouchEnd(e){
     } else {
       cardClick(dragSource.type, dragSource.idx, dragSource.cardIdx);
     }
+    lastTouchEndTs = Date.now();
   }
   dragSource = null;
   isDragGesture = false;
@@ -1871,6 +1879,10 @@ function createCardEl(c, type, idx, cardIdx){
   el.ontouchend = handleTouchEnd;
   el.onclick = (e) => {
     e.stopPropagation();
+    if(shouldIgnoreClickAfterTouch()){
+      e.preventDefault();
+      return;
+    }
     if(tryAutoMoveFromTap(type, idx, cardIdx)){
       selected = null;
       render();
@@ -1897,7 +1909,10 @@ function render(){
     if(!isActiveSlot) return;
     slot.ondragover = handleDragOver; slot.ondragenter = handleDragEnter;
     slot.ondragleave = handleDragLeave; slot.ondrop = (e) => handleDrop(e, 'hand', i);
-    slot.onclick = () => cardClick('hand', i);
+    slot.onclick = (e) => {
+      if(shouldIgnoreClickAfterTouch()){ e.preventDefault(); return; }
+      cardClick('hand', i);
+    };
     if(hand[i]) slot.appendChild(createCardEl(hand[i], 'hand', i));
   });
   document.querySelectorAll('.foundation').forEach(found => {
@@ -1905,7 +1920,10 @@ function render(){
     const i = parseInt(found.dataset.id);
     found.ondragover = handleDragOver; found.ondragenter = handleDragEnter;
     found.ondragleave = handleDragLeave; found.ondrop = (e) => handleDrop(e, 'foundation', i);
-    found.onclick = () => cardClick('foundation', i);
+    found.onclick = (e) => {
+      if(shouldIgnoreClickAfterTouch()){ e.preventDefault(); return; }
+      cardClick('foundation', i);
+    };
     const p = foundations[i];
     if(p.length){
       const el = createCardEl(p[p.length-1], 'foundation', i, p.length-1);
@@ -1918,7 +1936,7 @@ function render(){
     const i = parseInt(pile.dataset.id);
     pile.ondragover = handleDragOver; pile.ondragenter = handleDragEnter;
     pile.ondragleave = handleDragLeave; pile.ondrop = (e) => handleDrop(e, 'pile', i);
-    pile.onclick = () => { if(selected) { 
+    pile.onclick = (e) => { if(shouldIgnoreClickAfterTouch()){ e.preventDefault(); return; } if(selected) { 
         if(selected.type==='pile') executePileToPile(selected.idx, selected.cardIdx, i);
         else executeHandToPile(selected.idx, i);
         selected=null; render();
