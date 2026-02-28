@@ -1688,6 +1688,8 @@ function highlightPileCard(pileIdx, cardIdx, type){
 
 /* --- INTERACTION --- */
 let dragSource = null;
+let lastTouchEndTs = 0;
+const TOUCH_CLICK_GUARD_MS = 400;
 let touchClone = document.getElementById('drag-ghost');
 let touchStartCoords = {x:0, y:0};
 let isDragGesture = false;
@@ -1719,6 +1721,7 @@ function handleDrop(e, targetType, targetIdx){
 function handleTouchStart(e, type, idx, cardIdx){
   clearHints();
   if(type === 'pile' && !tableau[idx][cardIdx].faceUp) return;
+  e.preventDefault();
   const touch = e.touches[0];
   touchStartCoords = {x: touch.clientX, y: touch.clientY};
   isDragGesture = false;
@@ -1765,6 +1768,7 @@ function handleTouchEnd(e){
       let tIdx = parseInt(target.dataset.id);
       commitMove(tType, tIdx);
     } else render();
+    lastTouchEndTs = Date.now();
   } else {
     e.preventDefault();
     if(tryAutoMoveFromTap(dragSource.type, dragSource.idx, dragSource.cardIdx)){
@@ -1774,6 +1778,7 @@ function handleTouchEnd(e){
     } else {
       cardClick(dragSource.type, dragSource.idx, dragSource.cardIdx);
     }
+    lastTouchEndTs = Date.now();
   }
   dragSource = null;
   isDragGesture = false;
@@ -1870,6 +1875,7 @@ function createCardEl(c, type, idx, cardIdx){
   el.ontouchmove = handleTouchMove;
   el.ontouchend = handleTouchEnd;
   el.onclick = (e) => {
+    if(Date.now() - lastTouchEndTs < TOUCH_CLICK_GUARD_MS) return;
     e.stopPropagation();
     if(tryAutoMoveFromTap(type, idx, cardIdx)){
       selected = null;
