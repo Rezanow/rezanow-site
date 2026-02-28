@@ -842,7 +842,7 @@ const GAME_STATE_KEY = "rs_gameState_v1";
 const STATS_HISTORY_KEY = "rs_statsHistory_v1";
 const DEAL_VARIANT_KEY = "rs_dealVariant_v1";
 const MAX_STATS_HISTORY = 100;
-const APP_VERSION = "v0.2.9";
+const APP_VERSION = "v0.2.10";
 
 const DEAL_VARIANTS = {
   cells0: {
@@ -1474,14 +1474,14 @@ function checkGameState(){
     document.getElementById('modalWin').classList.add('active');
   } else {
     // Check for loss (no moves possible)
-    if(!findAnyMove(false)){
+    if(!findAnyMove(false, { includeAllCellMoves: true })){
       if(canFinalizeLoss()) recordGameResult('loss');
       document.getElementById('modalLose').classList.add('active');
     }
   }
 }
 
-function enumerateMoves({ includeCellShuffles=true, suppressImmediateReverse=null, state=null } = {}){
+function enumerateMoves({ includeCellShuffles=true, includeAllCellMoves=false, suppressImmediateReverse=null, state=null } = {}){
   const gameState = state || { tableau, hand, foundations };
   const moves = [];
 
@@ -1586,10 +1586,16 @@ function enumerateMoves({ includeCellShuffles=true, suppressImmediateReverse=nul
     );
   };
 
-  // 5. Pile Top -> Hand fallback (only when it unlocks non-reversible progress)
+  // 5. Pile Top -> Hand fallback
   for(let h=0; h<gameState.hand.length; h++){
     if(gameState.hand[h]) continue;
     for(let i=0; i<7; i++){
+      if(!gameState.tableau[i].length) continue;
+      if(includeAllCellMoves){
+        pushMove('pile_to_hand', { pileIdx: i, cardIdx: gameState.tableau[i].length-1 }, { handIdx: h });
+        continue;
+      }
+
       if(gameState.tableau[i].length > 1 && unlocksProgressMove(i, h)){
         pushMove('pile_to_hand', { pileIdx: i, cardIdx: gameState.tableau[i].length-1 }, { handIdx: h });
       }
@@ -1633,8 +1639,8 @@ function announceMoveHint(move){
   announceHint('Hint available: move the highlighted card.');
 }
 
-function findAnyMove(highlight){
-  const moves = enumerateMoves({ includeCellShuffles: true });
+function findAnyMove(highlight, { includeAllCellMoves=false } = {}){
+  const moves = enumerateMoves({ includeCellShuffles: true, includeAllCellMoves });
   const move = moves[0];
   if(!move) return false;
   if(!highlight) return true;
