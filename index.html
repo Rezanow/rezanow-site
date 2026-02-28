@@ -1511,7 +1511,7 @@ function findAnyMove(highlight){
           if(i===t) continue;
           const tp = tableau[t];
           if(!tp.length){
-            const movingKingToEmpty = c.rank === 'K' && j > 0 && (allowBaseKingToEmpty || j > 0);
+            const movingKingToEmpty = c.rank === 'K' && j > 0 && allowBaseKingToEmpty;
             if(movingKingToEmpty){
               if(highlight) { highlightPileCard(i,j,'source'); highlightPile(t,'target'); }
               return true;
