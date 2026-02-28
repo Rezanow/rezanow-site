@@ -1456,6 +1456,16 @@ function canFinalizeLoss(){
   return historyStack.length === 0;
 }
 
+function restorePostLoadModalState(){
+  if(!gameFinished) return;
+
+  if(isWin()){
+    document.getElementById('modalWin').classList.add('active');
+  } else {
+    document.getElementById('modalLose').classList.add('active');
+  }
+}
+
 /* --- GAME STATE CHECKS --- */
 function checkGameState(){
   if(isWin()){
@@ -2048,6 +2058,7 @@ if(loadPersistedGameState()){
   startTimer();
   fit();
   render();
+  restorePostLoadModalState();
 } else {
   start();
 }
