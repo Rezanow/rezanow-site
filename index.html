@@ -1338,25 +1338,6 @@ function moveCardToAnyTableau(type, idx, cardIdx){
   if(targetIdx === -1) return false;
   if(type === 'pile') return executePileToPile(idx, cardIdx, targetIdx);
   return executeHandToPile(idx, targetIdx);
-  if(type === 'pile'){
-    const srcPile = tableau[idx];
-    if(!srcPile.length) return false;
-    if(cardIdx < 0 || cardIdx >= srcPile.length) return false;
-    if(!srcPile[cardIdx].faceUp) return false;
-    for(let destI = 0; destI < 7; destI++){
-      if(destI === idx) continue;
-      if(executePileToPile(idx, cardIdx, destI)) return true;
-    }
-    return false;
-  }
-  if(type === 'hand'){
-    if(!hand[idx]) return false;
-    for(let destI = 0; destI < 7; destI++){
-      if(executeHandToPile(idx, destI)) return true;
-    }
-    return false;
-  }
-  return false;
 }
 
 function tryAutoMoveFromTap(type, idx, cardIdx){
