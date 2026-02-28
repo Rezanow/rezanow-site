@@ -1572,7 +1572,10 @@ function closeModals(){
 /* --- HIGHLIGHTERS --- */
 function highlightHand(idx, type){ 
   const el = document.querySelector(`.hand-slot[data-id="${idx}"] .card`); if(el) el.classList.add('hint-'+type); 
-  else if(type==='target') document.querySelector(`.hand-slot[data-id="${idx}"]`).classList.add('hint-'+type);
+  else if(type==='target') {
+    const slotEl = document.querySelector(`.hand-slot[data-id="${idx}"]`);
+    if(slotEl) slotEl.classList.add('hint-'+type);
+  }
 }
 function highlightFoundation(idx, type){ 
   const el = document.querySelector(`.foundation[data-id="${idx}"]`); if(el) el.classList.add('hint-'+type); 
