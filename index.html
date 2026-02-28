@@ -1877,6 +1877,10 @@ function createCardEl(c, type, idx, cardIdx){
   el.onclick = (e) => {
     if(Date.now() - lastTouchEndTs < TOUCH_CLICK_GUARD_MS) return;
     e.stopPropagation();
+    if(Date.now() - lastTouchEndTs < TOUCH_CLICK_GUARD_MS){
+      e.preventDefault();
+      return;
+    }
     if(tryAutoMoveFromTap(type, idx, cardIdx)){
       selected = null;
       render();
