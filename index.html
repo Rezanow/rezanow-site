@@ -765,7 +765,7 @@ const STATS_HISTORY_KEY = "rs_statsHistory_v1";
 const DBL_CLICK_FOUNDATION_KEY = "rs_dblClickFoundation_v1";
 const DEAL_VARIANT_KEY = "rs_dealVariant_v1";
 const MAX_STATS_HISTORY = 100;
-const APP_VERSION = "v0.2.3";
+const APP_VERSION = "v0.2.4";
 
 const DEAL_VARIANTS = {
   cells0: {
@@ -1782,12 +1782,13 @@ function createCardEl(c, type, idx, cardIdx){
       clearTimeout(clickTimeoutId);
       clickTimeoutId = null;
     }
-    if(!doubleClickToFoundationEnabled) return;
-    if(tryAutoMoveFromTap(type, idx, cardIdx)){
+    if(doubleClickToFoundationEnabled && tryAutoMoveFromTap(type, idx, cardIdx)){
       selected = null;
       render();
       checkGameState();
+      return;
     }
+    cardClick(type, idx, cardIdx);
   };
   el.innerHTML = `<div class="val-tl">${c.rank}</div><div class="suit-tr">${c.suit}</div><div class="val-center">${c.rank}</div>`;
   return el;
