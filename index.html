@@ -1737,6 +1737,7 @@ function cardClick(type, idx, cardIdx){
 
 function createCardEl(c, type, idx, cardIdx){
   const el = document.createElement("div");
+  let clickTimeoutId = null;
   el.className = "card";
   if(!c.faceUp){ el.classList.add("back"); return el; }
   el.classList.add("face");
@@ -1753,16 +1754,25 @@ function createCardEl(c, type, idx, cardIdx){
   el.ontouchstart = (e) => handleTouchStart(e, type, idx, cardIdx);
   el.ontouchmove = handleTouchMove;
   el.ontouchend = handleTouchEnd;
-  el.onclick = (e) => { e.stopPropagation(); cardClick(type, idx, cardIdx); };
+  el.onclick = (e) => {
+    e.stopPropagation();
+    if(clickTimeoutId !== null) return;
+    clickTimeoutId = setTimeout(() => {
+      clickTimeoutId = null;
+      cardClick(type, idx, cardIdx);
+    }, 250);
+  };
   el.ondblclick = (e) => {
     e.stopPropagation();
+    if(clickTimeoutId !== null){
+      clearTimeout(clickTimeoutId);
+      clickTimeoutId = null;
+    }
     if(!doubleClickToFoundationEnabled) return;
     if(tryAutoMoveFromTap(type, idx, cardIdx)){
       selected = null;
       render();
       checkGameState();
-    } else {
-      cardClick(type, idx, cardIdx);
     }
   };
   el.innerHTML = `<div class="val-tl">${c.rank}</div><div class="suit-tr">${c.suit}</div><div class="val-center">${c.rank}</div>`;
