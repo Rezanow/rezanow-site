@@ -319,7 +319,6 @@
 
     @media (max-width: 420px){
       .suit-style-label{ display:none; }
-      .dblclick-foundation-label{ display:inline-block; font-size: 11px; }
       #suitStyleSelect{ max-width: 140px; padding: 0 6px; }
     }
 
@@ -652,8 +651,6 @@ header .controls > *{ flex: 0 0 auto; }
         <option value="cb-corners">High Contrast + Big Corner Glyphs</option>
       </select>
 
-      <label class="suit-style-label dblclick-foundation-label" for="doubleClickFoundationToggle">Double-click to Foundation</label>
-      <input id="doubleClickFoundationToggle" type="checkbox" title="Double-click a top card or free-cell card to move it to a valid foundation" />
 
       <label class="suit-style-label" for="dealVariantSelect">Free Cells</label>
       <select id="dealVariantSelect" title="Choose how many free cells are available at the start">
@@ -809,10 +806,9 @@ const suitClass = { "♠":"spades", "♥":"hearts", "♦":"diamonds", "♣":"clu
 const SUIT_STYLE_KEY = "rs_suitStyle_v1";
 const GAME_STATE_KEY = "rs_gameState_v1";
 const STATS_HISTORY_KEY = "rs_statsHistory_v1";
-const DBL_CLICK_FOUNDATION_KEY = "rs_dblClickFoundation_v1";
 const DEAL_VARIANT_KEY = "rs_dealVariant_v1";
 const MAX_STATS_HISTORY = 100;
-const APP_VERSION = "v0.2.5";
+const APP_VERSION = "v0.2.6";
 
 const DEAL_VARIANTS = {
   cells0: {
@@ -950,36 +946,6 @@ function initSuitStyleUI(){
   loadSuitStyle();
 }
 
-function loadDoubleClickFoundationPreference(){
-  try {
-    const raw = localStorage.getItem(DBL_CLICK_FOUNDATION_KEY);
-    if(raw === null){
-      doubleClickToFoundationEnabled = true;
-      return;
-    }
-    doubleClickToFoundationEnabled = raw === "1";
-  } catch(e){
-    doubleClickToFoundationEnabled = true;
-  }
-}
-
-function applyDoubleClickFoundationPreference(enabled){
-  doubleClickToFoundationEnabled = !!enabled;
-  const checkbox = document.getElementById("doubleClickFoundationToggle");
-  if(checkbox) checkbox.checked = doubleClickToFoundationEnabled;
-  try {
-    localStorage.setItem(DBL_CLICK_FOUNDATION_KEY, doubleClickToFoundationEnabled ? "1" : "0");
-  } catch(e) {}
-}
-
-function initDoubleClickFoundationUI(){
-  loadDoubleClickFoundationPreference();
-  const checkbox = document.getElementById("doubleClickFoundationToggle");
-  if(!checkbox) return;
-  checkbox.checked = doubleClickToFoundationEnabled;
-  checkbox.addEventListener("change", () => applyDoubleClickFoundationPreference(checkbox.checked));
-}
-
 function renderAppVersion(){
   const versionEl = document.getElementById("appVersion");
   if(!versionEl) return;
@@ -1001,7 +967,6 @@ let lastTickTs=Date.now();
 let timerActive=false;
 let gameFinished=false;
 let runResultRecorded=false;
-let doubleClickToFoundationEnabled=true;
 
 const MAX_PERSISTED_HISTORY = 150;
 
@@ -1349,8 +1314,9 @@ function moveCardToAnyFoundation(type, idx, cardIdx){
 function moveCardToAnyTableau(type, idx, cardIdx){
   let movingCard;
   if(type === 'pile'){
-    if(cardIdx !== tableau[idx].length - 1) return false;
-    movingCard = tableau[idx][cardIdx];
+    const pile = tableau[idx];
+    if(!pile[cardIdx] || !pile[cardIdx].faceUp) return false;
+    movingCard = pile[cardIdx];
   } else if(type === 'hand'){
     movingCard = hand[idx];
     if(!movingCard) return false;
@@ -1387,8 +1353,24 @@ function moveCardToAnyTableau(type, idx, cardIdx){
   return executeHandToPile(idx, targetIdx);
 }
 
+function moveCardToAnyCell(type, idx, cardIdx){
+  if(type !== 'pile') return false;
+  if(cardIdx !== tableau[idx].length - 1) return false;
+  for(let h=0; h<hand.length; h++){
+    if(!hand[h]) return executePileToHand(idx, h);
+  }
+  return false;
+}
+
 function tryAutoMoveFromTap(type, idx, cardIdx){
-  return moveCardToAnyFoundation(type, idx, cardIdx) || moveCardToAnyTableau(type, idx, cardIdx);
+  if(type === 'pile' && cardIdx !== tableau[idx].length - 1){
+    return moveCardToAnyTableau(type, idx, cardIdx);
+  }
+  return (
+    moveCardToAnyFoundation(type, idx, cardIdx) ||
+    moveCardToAnyTableau(type, idx, cardIdx) ||
+    moveCardToAnyCell(type, idx, cardIdx)
+  );
 }
 
 function hasActiveRunToRecordAsLoss(){
@@ -1595,10 +1577,6 @@ let touchClone = document.getElementById('drag-ghost');
 let touchStartCoords = {x:0, y:0};
 let isDragGesture = false;
 let touchOriginalEl = null;
-let lastTap = { ts: 0, type: null, idx: null, cardIdx: null };
-const DOUBLE_TAP_WINDOW_MS = 300;
-const SINGLE_TAP_DELAY_MS = 220;
-let pendingTapClick = null;
 
 function handleDragStart(e, type, idx, cardIdx){
   clearHints();
@@ -1674,34 +1652,12 @@ function handleTouchEnd(e){
     } else render();
   } else {
     e.preventDefault();
-    const now = Date.now();
-    const isDoubleTap =
-      lastTap.type === dragSource.type &&
-      lastTap.idx === dragSource.idx &&
-      lastTap.cardIdx === dragSource.cardIdx &&
-      (now - lastTap.ts) <= DOUBLE_TAP_WINDOW_MS;
-
-    if(pendingTapClick !== null){
-      clearTimeout(pendingTapClick);
-      pendingTapClick = null;
-    }
-
-    if(isDoubleTap){
-      if(doubleClickToFoundationEnabled && tryAutoMoveFromTap(dragSource.type, dragSource.idx, dragSource.cardIdx)){
-        selected = null;
-        render();
-        checkGameState();
-      } else {
-        cardClick(dragSource.type, dragSource.idx, dragSource.cardIdx);
-      }
-      lastTap = { ts: 0, type: null, idx: null, cardIdx: null };
+    if(tryAutoMoveFromTap(dragSource.type, dragSource.idx, dragSource.cardIdx)){
+      selected = null;
+      render();
+      checkGameState();
     } else {
-      const sourceSnapshot = { ...dragSource };
-      pendingTapClick = setTimeout(() => {
-        pendingTapClick = null;
-        cardClick(sourceSnapshot.type, sourceSnapshot.idx, sourceSnapshot.cardIdx);
-      }, SINGLE_TAP_DELAY_MS);
-      lastTap = { ts: now, type: dragSource.type, idx: dragSource.idx, cardIdx: dragSource.cardIdx };
+      cardClick(dragSource.type, dragSource.idx, dragSource.cardIdx);
     }
   }
   dragSource = null;
@@ -1782,7 +1738,6 @@ function cardClick(type, idx, cardIdx){
 
 function createCardEl(c, type, idx, cardIdx){
   const el = document.createElement("div");
-  let clickTimeoutId = null;
   el.className = "card";
   if(!c.faceUp){ el.classList.add("back"); return el; }
   el.classList.add("face");
@@ -1801,19 +1756,7 @@ function createCardEl(c, type, idx, cardIdx){
   el.ontouchend = handleTouchEnd;
   el.onclick = (e) => {
     e.stopPropagation();
-    if(clickTimeoutId !== null) return;
-    clickTimeoutId = setTimeout(() => {
-      clickTimeoutId = null;
-      cardClick(type, idx, cardIdx);
-    }, 250);
-  };
-  el.ondblclick = (e) => {
-    e.stopPropagation();
-    if(clickTimeoutId !== null){
-      clearTimeout(clickTimeoutId);
-      clickTimeoutId = null;
-    }
-    if(doubleClickToFoundationEnabled && tryAutoMoveFromTap(type, idx, cardIdx)){
+    if(tryAutoMoveFromTap(type, idx, cardIdx)){
       selected = null;
       render();
       checkGameState();
@@ -1986,7 +1929,6 @@ if(loadPersistedGameState()){
 renderStatsModal();
 
 initSuitStyleUI();
-initDoubleClickFoundationUI();
 initDealVariantUI();
 renderAppVersion();
 const headerEl = document.querySelector('header');
