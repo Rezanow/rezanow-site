@@ -1455,96 +1455,158 @@ function checkGameState(){
   }
 }
 
-function findAnyMove(highlight){
-  // Returns true if a move exists. If highlight=true, it highlights it.
-  
+function enumerateMoves({ includeCellShuffles=true, suppressImmediateReverse=null, state=null } = {}){
+  const gameState = state || { tableau, hand, foundations };
+  const moves = [];
+
+  const pushMove = (type, source, target) => {
+    if(
+      suppressImmediateReverse &&
+      type === 'hand_to_tableau' &&
+      source.handIdx === suppressImmediateReverse.handIdx &&
+      target.pileIdx === suppressImmediateReverse.pileIdx
+    ) return;
+    moves.push({ type, source, target });
+  };
+
   // 1. Hand -> Foundation
-  for(let i=0; i<hand.length; i++){
-    if(hand[i]){
+  for(let i=0; i<gameState.hand.length; i++){
+    if(gameState.hand[i]){
       for(let f=0; f<4; f++){
-        if(canFoundation(hand[i], foundations[f])){
-          if(highlight) { highlightHand(i, 'source'); highlightFoundation(f, 'target'); }
-          return true;
+        if(canFoundation(gameState.hand[i], gameState.foundations[f])){
+          pushMove('hand_to_foundation', { handIdx: i }, { foundationIdx: f });
         }
       }
     }
   }
+
   // 2. Pile Top -> Foundation
   for(let i=0; i<7; i++){
-    if(tableau[i].length){
-      const c = tableau[i][tableau[i].length-1];
+    if(gameState.tableau[i].length){
+      const c = gameState.tableau[i][gameState.tableau[i].length-1];
       for(let f=0; f<4; f++){
-        if(canFoundation(c, foundations[f])){
-          if(highlight) { highlightPileCard(i, tableau[i].length-1, 'source'); highlightFoundation(f, 'target'); }
-          return true;
+        if(canFoundation(c, gameState.foundations[f])){
+          pushMove('pile_to_foundation', { pileIdx: i, cardIdx: gameState.tableau[i].length-1 }, { foundationIdx: f });
         }
       }
     }
   }
+
   // 3. Hand -> Tableau
-  for(let i=0; i<hand.length; i++){
-    if(hand[i]){
+  for(let i=0; i<gameState.hand.length; i++){
+    if(gameState.hand[i]){
       for(let t=0; t<7; t++){
-        const tp = tableau[t];
-        if(!tp.length){ 
-          if(hand[i].rank==='K'){ 
-            if(highlight) { highlightHand(i,'source'); highlightPile(t,'target'); }
-            return true; 
-          } 
+        const tp = gameState.tableau[t];
+        if(!tp.length){
+          if(gameState.hand[i].rank==='K') pushMove('hand_to_tableau', { handIdx: i }, { pileIdx: t, targetCardIdx: null });
         }
-        else if(canTableau(hand[i], tp[tp.length-1])){ 
-          if(highlight) { highlightHand(i,'source'); highlightPileCard(t, tp.length-1, 'target'); }
-          return true; 
+        else if(canTableau(gameState.hand[i], tp[tp.length-1])){
+          pushMove('hand_to_tableau', { handIdx: i }, { pileIdx: t, targetCardIdx: tp.length-1 });
         }
       }
     }
   }
+
   // 4. Pile -> Tableau (Deep moves allowed)
-  // Prefer stronger progress first; fallback can include king-to-empty only when it reveals cards (j > 0).
-  const findPileToTableauMove = (allowBaseKingToEmpty) => {
+  const enumeratePileToTableauMoves = ({ includeRegular, includeKingToEmpty }) => {
     for(let i=0; i<7; i++){
-      const p = tableau[i];
+      const p = gameState.tableau[i];
       for(let j=0; j<p.length; j++){
         if(!p[j].faceUp) continue;
         const c = p[j];
         for(let t=0; t<7; t++){
           if(i===t) continue;
-          const tp = tableau[t];
+          const tp = gameState.tableau[t];
           if(!tp.length){
-            const movingKingToEmpty = c.rank === 'K' && j > 0 && allowBaseKingToEmpty;
-            if(movingKingToEmpty){
-              if(highlight) { highlightPileCard(i,j,'source'); highlightPile(t,'target'); }
-              return true;
-            }
+            const movingKingToEmpty = c.rank === 'K' && j > 0 && includeKingToEmpty;
+            if(movingKingToEmpty) pushMove('pile_to_tableau', { pileIdx: i, cardIdx: j }, { pileIdx: t, targetCardIdx: null });
           }
-          else if(canTableau(c, tp[tp.length-1])){
-            if(highlight) { highlightPileCard(i,j,'source'); highlightPileCard(t, tp.length-1, 'target'); }
-            return true;
+          else if(includeRegular && canTableau(c, tp[tp.length-1])){
+            pushMove('pile_to_tableau', { pileIdx: i, cardIdx: j }, { pileIdx: t, targetCardIdx: tp.length-1 });
           }
         }
       }
     }
-    return false;
   };
 
-  // Pass 1: stronger progress only (no base king -> empty pile moves).
-  if(findPileToTableauMove(false)) return true;
-  // Pass 2: fallback still excludes j === 0 king-to-empty shuffles.
-  if(findPileToTableauMove(true)) return true;
-  // 5. Pile Top -> Hand (Only if Hand slot empty)
-  for(let h=0; h<hand.length; h++){
-      if(!hand[h]){
-          // Can we move a top card to hand? Yes.
-          // Is it useful? Maybe to uncover a card. Any visible top card on a pile > 1 deep is a candidate.
-          for(let i=0; i<7; i++){
-              if(tableau[i].length > 1){ // Only valid if revealing something or saving a card
-                  if(highlight) { highlightPileCard(i, tableau[i].length-1, 'source'); highlightHand(h, 'target'); }
-                  return true;
-              }
-          }
+  enumeratePileToTableauMoves({ includeRegular: true, includeKingToEmpty: false });
+  enumeratePileToTableauMoves({ includeRegular: false, includeKingToEmpty: true });
+
+  if(!includeCellShuffles) return moves;
+
+  const unlocksProgressMove = (pileIdx, handIdx) => {
+    const simulatedState = {
+      tableau: gameState.tableau.map(p => [...p]),
+      hand: [...gameState.hand],
+      foundations: gameState.foundations.map(p => [...p])
+    };
+    const fromPile = simulatedState.tableau[pileIdx];
+    const movedCard = fromPile.pop();
+    if(!movedCard) return false;
+    simulatedState.hand[handIdx] = movedCard;
+    if(fromPile.length && !fromPile[fromPile.length-1].faceUp) fromPile[fromPile.length-1].faceUp = true;
+
+    const resultingMoves = enumerateMoves({
+      includeCellShuffles: false,
+      suppressImmediateReverse: { handIdx, pileIdx },
+      state: simulatedState
+    });
+
+    return resultingMoves.some(move =>
+      move.type === 'hand_to_foundation' ||
+      move.type === 'pile_to_foundation' ||
+      move.type === 'hand_to_tableau' ||
+      move.type === 'pile_to_tableau'
+    );
+  };
+
+  // 5. Pile Top -> Hand fallback (only when it unlocks non-reversible progress)
+  for(let h=0; h<gameState.hand.length; h++){
+    if(gameState.hand[h]) continue;
+    for(let i=0; i<7; i++){
+      if(gameState.tableau[i].length > 1 && unlocksProgressMove(i, h)){
+        pushMove('pile_to_hand', { pileIdx: i, cardIdx: gameState.tableau[i].length-1 }, { handIdx: h });
       }
+    }
   }
-  
+
+  return moves;
+}
+
+function findAnyMove(highlight){
+  const moves = enumerateMoves({ includeCellShuffles: true });
+  const move = moves[0];
+  if(!move) return false;
+  if(!highlight) return true;
+
+  if(move.type === 'hand_to_foundation'){
+    highlightHand(move.source.handIdx, 'source');
+    highlightFoundation(move.target.foundationIdx, 'target');
+    return true;
+  }
+  if(move.type === 'pile_to_foundation'){
+    highlightPileCard(move.source.pileIdx, move.source.cardIdx, 'source');
+    highlightFoundation(move.target.foundationIdx, 'target');
+    return true;
+  }
+  if(move.type === 'hand_to_tableau'){
+    highlightHand(move.source.handIdx, 'source');
+    if(move.target.targetCardIdx === null) highlightPile(move.target.pileIdx, 'target');
+    else highlightPileCard(move.target.pileIdx, move.target.targetCardIdx, 'target');
+    return true;
+  }
+  if(move.type === 'pile_to_tableau'){
+    highlightPileCard(move.source.pileIdx, move.source.cardIdx, 'source');
+    if(move.target.targetCardIdx === null) highlightPile(move.target.pileIdx, 'target');
+    else highlightPileCard(move.target.pileIdx, move.target.targetCardIdx, 'target');
+    return true;
+  }
+  if(move.type === 'pile_to_hand'){
+    highlightPileCard(move.source.pileIdx, move.source.cardIdx, 'source');
+    highlightHand(move.target.handIdx, 'target');
+    return true;
+  }
+
   return false;
 }
 
