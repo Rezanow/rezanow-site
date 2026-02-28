@@ -765,7 +765,7 @@ const STATS_HISTORY_KEY = "rs_statsHistory_v1";
 const DBL_CLICK_FOUNDATION_KEY = "rs_dblClickFoundation_v1";
 const DEAL_VARIANT_KEY = "rs_dealVariant_v1";
 const MAX_STATS_HISTORY = 100;
-const APP_VERSION = "v0.2.3";
+const APP_VERSION = "v0.2.4";
 
 const DEAL_VARIANTS = {
   cells0: {
@@ -1566,6 +1566,8 @@ let isDragGesture = false;
 let touchOriginalEl = null;
 let lastTap = { ts: 0, type: null, idx: null, cardIdx: null };
 const DOUBLE_TAP_WINDOW_MS = 300;
+const SINGLE_TAP_DELAY_MS = 220;
+let pendingTapClick = null;
 
 function handleDragStart(e, type, idx, cardIdx){
   clearHints();
@@ -1643,19 +1645,31 @@ function handleTouchEnd(e){
     e.preventDefault();
     const now = Date.now();
     const isDoubleTap =
-      doubleClickToFoundationEnabled &&
       lastTap.type === dragSource.type &&
       lastTap.idx === dragSource.idx &&
       lastTap.cardIdx === dragSource.cardIdx &&
       (now - lastTap.ts) <= DOUBLE_TAP_WINDOW_MS;
 
-    if(isDoubleTap && tryAutoMoveFromTap(dragSource.type, dragSource.idx, dragSource.cardIdx)){
-      selected = null;
-      render();
-      checkGameState();
+    if(pendingTapClick !== null){
+      clearTimeout(pendingTapClick);
+      pendingTapClick = null;
+    }
+
+    if(isDoubleTap){
+      if(doubleClickToFoundationEnabled && tryAutoMoveFromTap(dragSource.type, dragSource.idx, dragSource.cardIdx)){
+        selected = null;
+        render();
+        checkGameState();
+      } else {
+        cardClick(dragSource.type, dragSource.idx, dragSource.cardIdx);
+      }
       lastTap = { ts: 0, type: null, idx: null, cardIdx: null };
     } else {
-      cardClick(dragSource.type, dragSource.idx, dragSource.cardIdx);
+      const sourceSnapshot = { ...dragSource };
+      pendingTapClick = setTimeout(() => {
+        pendingTapClick = null;
+        cardClick(sourceSnapshot.type, sourceSnapshot.idx, sourceSnapshot.cardIdx);
+      }, SINGLE_TAP_DELAY_MS);
       lastTap = { ts: now, type: dragSource.type, idx: dragSource.idx, cardIdx: dragSource.cardIdx };
     }
   }
@@ -1768,12 +1782,13 @@ function createCardEl(c, type, idx, cardIdx){
       clearTimeout(clickTimeoutId);
       clickTimeoutId = null;
     }
-    if(!doubleClickToFoundationEnabled) return;
-    if(tryAutoMoveFromTap(type, idx, cardIdx)){
+    if(doubleClickToFoundationEnabled && tryAutoMoveFromTap(type, idx, cardIdx)){
       selected = null;
       render();
       checkGameState();
+      return;
     }
+    cardClick(type, idx, cardIdx);
   };
   el.innerHTML = `<div class="val-tl">${c.rank}</div><div class="suit-tr">${c.suit}</div><div class="val-center">${c.rank}</div>`;
   return el;
