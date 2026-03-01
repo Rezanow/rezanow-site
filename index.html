@@ -3,7 +3,7 @@
   <!-- This is a comment -->
 <head>
   <meta charset="UTF-8" />
-  <title>Russian Cell</title>
+  <title>Russian Reserve</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <style>
     :root{
@@ -664,7 +664,7 @@ header .controls > *{ flex: 0 0 auto; }
 <body class="suit-style-normal">
   <header>
     <div class="header-main">
-      <h1>Russian Cell</h1>
+      <h1>Russian Reserve</h1>
       <button id="menuToggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="headerControls">☰</button>
     </div>
     <div class="controls" id="headerControls">
@@ -724,7 +724,7 @@ header .controls > *{ flex: 0 0 auto; }
       </div>
 
       <div class="zone-hand">
-        <div class="zone-title">Cells</div>
+        <div class="zone-title">Reserve Cells</div>
         <div class="hand-row">
           <div class="hand-slot" data-id="0"></div>
           <div class="hand-slot" data-id="1"></div>
@@ -788,12 +788,13 @@ header .controls > *{ flex: 0 0 auto; }
   <div class="rules-content">
     
     <h2>How to Play</h2>
+    <p><b>Russian Reserve</b> is a Russian Solitaire variant with free reserve cells and a custom tableau layout.</p>
 
     <h3>Objective</h3>
     <p>Move all cards to the <b>foundations</b>, building each suit in ascending order from <b>Ace to King</b>.</p>
 
     <h3>Tableau Rules</h3>
-    <p>The tableau columns are your working area.</p>
+    <p>The custom tableau columns are your main working area.</p>
     <ul>
       <li>You may select <b>any face-up card</b> in a column.</li>
       <li>When you move a card, <b>every card stacked on top of it must move with it.</b></li>
@@ -817,14 +818,14 @@ header .controls > *{ flex: 0 0 auto; }
       <li>Cards placed in the foundation cannot return.</li>
     </ul>
 
-    <h3>Cells</h3>
-    <p>Cells are single-card holding spaces.</p>
+    <h3>Reserve Cells</h3>
+    <p>Reserve cells are free single-card holding spaces that help unblock the tableau.</p>
     <ul>
-      <li>One card per cell.</li>
-      <li>Only the <b>top card</b> of a column may be moved into a cell.</li>
-      <li>Cards in cells may later move to the tableau or foundation if legal.</li>
+      <li>One card per reserve cell.</li>
+      <li>Only the <b>top card</b> of a tableau column may be moved into a reserve cell.</li>
+      <li>Cards in reserve cells may later move to the tableau or foundation if legal.</li>
     </ul>
-    <p>Cells allow you to temporarily free blocked cards and create new options.</p>
+    <p>Use reserve cells to temporarily free blocked cards and create new options in the custom tableau layout.</p>
 
     <button id="closeRulesBtn">Close</button>
   </div>
