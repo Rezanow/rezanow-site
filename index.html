@@ -1478,6 +1478,145 @@ function clearHints(){
   });
 }
 
+function cloneGameState(state){
+  return {
+    tableau: state.tableau.map(pile => pile.map(card => ({ ...card }))),
+    hand: state.hand.map(card => (card ? { ...card } : null)),
+    foundations: state.foundations.map(pile => pile.map(card => ({ ...card })))
+  };
+}
+
+function encodeCardWithFace(card){
+  if(!card) return '_';
+  return `${card.rank}${card.suit}${card.faceUp ? 'U' : 'D'}`;
+}
+
+function buildCompactStateKey(state){
+  const tableauKey = state.tableau
+    .map(pile => pile.map(encodeCardWithFace).join(','))
+    .join('|');
+  const handKey = state.hand
+    .map(encodeCardWithFace)
+    .join(',');
+  const foundationsKey = state.foundations
+    .map(pile => pile.map(encodeCardWithFace).join(','))
+    .join('|');
+  return `${tableauKey}#${handKey}#${foundationsKey}`;
+}
+
+function countFoundationCards(state){
+  return state.foundations.reduce((total, pile) => total + pile.length, 0);
+}
+
+function applyMoveToState(state, move){
+  const nextState = cloneGameState(state);
+  const beforeFoundationCount = countFoundationCards(nextState);
+  let exposedFaceDown = false;
+
+  if(move.type === 'hand_to_foundation'){
+    const moved = nextState.hand[move.source.handIdx];
+    if(!moved) return null;
+    nextState.hand[move.source.handIdx] = null;
+    nextState.foundations[move.target.foundationIdx].push(moved);
+  } else if(move.type === 'pile_to_foundation'){
+    const source = nextState.tableau[move.source.pileIdx];
+    const moved = source.pop();
+    if(!moved) return null;
+    nextState.foundations[move.target.foundationIdx].push(moved);
+    if(source.length && !source[source.length-1].faceUp){
+      source[source.length-1].faceUp = true;
+      exposedFaceDown = true;
+    }
+  } else if(move.type === 'hand_to_tableau'){
+    const moved = nextState.hand[move.source.handIdx];
+    if(!moved) return null;
+    nextState.hand[move.source.handIdx] = null;
+    nextState.tableau[move.target.pileIdx].push(moved);
+  } else if(move.type === 'pile_to_tableau'){
+    const source = nextState.tableau[move.source.pileIdx];
+    const movedStack = source.splice(move.source.cardIdx);
+    if(!movedStack.length) return null;
+    nextState.tableau[move.target.pileIdx].push(...movedStack);
+    if(source.length && !source[source.length-1].faceUp){
+      source[source.length-1].faceUp = true;
+      exposedFaceDown = true;
+    }
+  } else if(move.type === 'pile_to_hand'){
+    const source = nextState.tableau[move.source.pileIdx];
+    const moved = source.pop();
+    if(!moved) return null;
+    nextState.hand[move.target.handIdx] = moved;
+    if(source.length && !source[source.length-1].faceUp){
+      source[source.length-1].faceUp = true;
+      exposedFaceDown = true;
+    }
+  } else {
+    return null;
+  }
+
+  const foundationGain = countFoundationCards(nextState) > beforeFoundationCount;
+  return {
+    nextState,
+    madeProgress: foundationGain || exposedFaceDown
+  };
+}
+
+function classifyHintBranches({ includeAllCellMoves=false, depthLimit=4, nodeCap=280 } = {}){
+  const rootState = { tableau, hand, foundations };
+  const rootMoves = enumerateMoves({ includeCellShuffles: true, includeAllCellMoves, state: rootState });
+  const rootKey = buildCompactStateKey(rootState);
+  const branches = [];
+  let exploredNodes = 0;
+
+  for(const move of rootMoves){
+    const initial = applyMoveToState(rootState, move);
+    if(!initial) continue;
+
+    const branchVisited = new Set([rootKey]);
+    const nextKey = buildCompactStateKey(initial.nextState);
+    branchVisited.add(nextKey);
+
+    if(initial.madeProgress){
+      branches.push({ move, kind: 'progress-creating' });
+      continue;
+    }
+
+    const stack = [{ state: initial.nextState, depth: 1 }];
+    let isProgressBranch = false;
+
+    while(stack.length && exploredNodes < nodeCap && !isProgressBranch){
+      const current = stack.pop();
+      exploredNodes += 1;
+      if(current.depth >= depthLimit) continue;
+
+      const childMoves = enumerateMoves({ includeCellShuffles: true, includeAllCellMoves, state: current.state });
+      for(const childMove of childMoves){
+        if(exploredNodes >= nodeCap) break;
+        const simulated = applyMoveToState(current.state, childMove);
+        if(!simulated) continue;
+
+        if(simulated.madeProgress){
+          isProgressBranch = true;
+          break;
+        }
+
+        const key = buildCompactStateKey(simulated.nextState);
+        if(branchVisited.has(key)) continue;
+
+        branchVisited.add(key);
+        stack.push({ state: simulated.nextState, depth: current.depth + 1 });
+      }
+    }
+
+    branches.push({ move, kind: isProgressBranch ? 'progress-creating' : 'loop-only' });
+  }
+
+  return {
+    branches,
+    progressBranches: branches.filter(branch => branch.kind === 'progress-creating')
+  };
+}
+
 function showHint(){
   clearHints();
   if(findAnyMove(true)) return;
@@ -1912,15 +2051,16 @@ function runHintRegressionScenario(){
 
 function findAnyMove(highlight, { includeAllCellMoves=false } = {}){
   const gameState = { tableau, hand, foundations };
-  const moves = enumerateMoves({ includeCellShuffles: true, includeAllCellMoves });
-  const rankedMove = moves
+  const analysis = classifyHintBranches({ includeAllCellMoves, depthLimit: 4, nodeCap: 280 });
+  const progressMoves = analysis.progressBranches.map(branch => branch.move);
+  const rankedMove = progressMoves
     .map(candidate => ({ candidate, score: scoreMove(candidate, gameState) }))
     .sort((a, b) => b.score - a.score)
     .map(({ candidate }) => candidate)[0];
   if(!rankedMove) return false;
   if(!highlight) return true;
 
-  const move = selectHintMove(moves);
+  const move = selectHintMove(progressMoves);
   if(!move) return false;
 
   if(move.type === 'hand_to_foundation' || move.type === 'hand_to_tableau'){
