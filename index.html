@@ -2633,7 +2633,12 @@ try {
 
 loadDealVariantPreference();
 applyDealVariant(currentDealVariantKey);
-runHintRegressionScenario();
+// Use ?debug=1 to enable runtime hint regression assertions.
+const isDebugMode = new URLSearchParams(location.search).get('debug') === '1' || ['localhost','127.0.0.1'].includes(location.hostname);
+if(isDebugMode){
+  console.info('[debug] Hint regression assertions enabled.');
+  runHintRegressionScenario();
+}
 
 if(loadPersistedGameState()){
   startTimer();
