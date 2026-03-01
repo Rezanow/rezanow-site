@@ -1592,6 +1592,14 @@ function enumerateMoves({ includeCellShuffles=true, includeAllCellMoves=false, s
 
   if(!includeCellShuffles) return moves;
 
+  const isSuppressedImmediateReversePileToHand = (pileIdx, handIdx) => (
+    suppressImmediateReverse &&
+    Number.isInteger(suppressImmediateReverse.handIdx) &&
+    Number.isInteger(suppressImmediateReverse.pileIdx) &&
+    suppressImmediateReverse.handIdx === handIdx &&
+    suppressImmediateReverse.pileIdx === pileIdx
+  );
+
   const unlocksProgressMove = (pileIdx, handIdx) => {
     const simulatedState = {
       tableau: gameState.tableau.map(p => p.map(card => ({ ...card }))),
@@ -1602,7 +1610,12 @@ function enumerateMoves({ includeCellShuffles=true, includeAllCellMoves=false, s
     const movedCard = fromPile.pop();
     if(!movedCard) return false;
     simulatedState.hand[handIdx] = movedCard;
-    if(fromPile.length && !fromPile[fromPile.length-1].faceUp) fromPile[fromPile.length-1].faceUp = true;
+    const exposedCardWasFaceDown = !!(
+      fromPile.length &&
+      fromPile[fromPile.length - 1] &&
+      !fromPile[fromPile.length - 1].faceUp
+    );
+    if(exposedCardWasFaceDown) fromPile[fromPile.length - 1].faceUp = true;
 
     const resultingMoves = enumerateMoves({
       includeCellShuffles: false,
@@ -1610,28 +1623,57 @@ function enumerateMoves({ includeCellShuffles=true, includeAllCellMoves=false, s
       state: simulatedState
     });
 
-    return resultingMoves.some(move =>
+    return {
+      hasNearTermProgress: resultingMoves.some(move =>
       move.type === 'hand_to_foundation' ||
       move.type === 'pile_to_foundation' ||
       move.type === 'hand_to_tableau' ||
       move.type === 'pile_to_tableau'
-    );
+      ),
+      revealsFaceDown: exposedCardWasFaceDown
+    };
   };
 
-  // 5. Pile Top -> Hand fallback
+  // 5. Pile Top -> Hand (tiered fallback)
+  const tier1PileToHandMoves = [];
+  const tier2PileToHandMoves = [];
+  const tier3PileToHandMoves = [];
+
   for(let h=0; h<gameState.hand.length; h++){
     if(gameState.hand[h]) continue;
     for(let i=0; i<7; i++){
       if(!gameState.tableau[i].length) continue;
+
+      if(isSuppressedImmediateReversePileToHand(i, h)) continue;
+
       if(includeAllCellMoves){
         pushMove('pile_to_hand', { pileIdx: i, cardIdx: gameState.tableau[i].length-1 }, { handIdx: h });
         continue;
       }
 
-      if(unlocksProgressMove(i, h)){
-        pushMove('pile_to_hand', { pileIdx: i, cardIdx: gameState.tableau[i].length-1 }, { handIdx: h });
+      const move = {
+        type: 'pile_to_hand',
+        source: { pileIdx: i, cardIdx: gameState.tableau[i].length-1 },
+        target: { handIdx: h }
+      };
+      const { hasNearTermProgress, revealsFaceDown } = unlocksProgressMove(i, h);
+
+      if(hasNearTermProgress){
+        tier1PileToHandMoves.push(move);
+      } else if(revealsFaceDown){
+        tier2PileToHandMoves.push(move);
+      } else {
+        tier3PileToHandMoves.push({ ...move, lowPriority: true });
       }
     }
+  }
+
+  if(tier1PileToHandMoves.length){
+    moves.push(...tier1PileToHandMoves);
+  } else if(tier2PileToHandMoves.length){
+    moves.push(...tier2PileToHandMoves);
+  } else {
+    moves.push(...tier3PileToHandMoves);
   }
 
   return moves;
@@ -1704,6 +1746,7 @@ function scoreMove(move, gameState){
     score += 3;
     if(revealsFaceDown) score += 35;
     if(hasNearTermProgress) score += 25;
+    if(move.lowPriority) score -= 20;
     if(!revealsFaceDown && !hasNearTermProgress) score -= 15;
   }
 
@@ -1913,14 +1956,17 @@ function runHintRegressionScenario(){
 function findAnyMove(highlight, { includeAllCellMoves=false } = {}){
   const gameState = { tableau, hand, foundations };
   const moves = enumerateMoves({ includeCellShuffles: true, includeAllCellMoves });
-  const rankedMove = moves
+  const nonLoopMoves = moves.filter(move => !isImmediateReverse(move, recentMoveContext, gameState));
+  const candidateMoves = nonLoopMoves.length ? nonLoopMoves : [];
+
+  const rankedMove = candidateMoves
     .map(candidate => ({ candidate, score: scoreMove(candidate, gameState) }))
     .sort((a, b) => b.score - a.score)
     .map(({ candidate }) => candidate)[0];
   if(!rankedMove) return false;
   if(!highlight) return true;
 
-  const move = selectHintMove(moves);
+  const move = selectHintMove(candidateMoves);
   if(!move) return false;
 
   if(move.type === 'hand_to_foundation' || move.type === 'hand_to_tableau'){
