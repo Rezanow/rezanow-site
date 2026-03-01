@@ -1843,11 +1843,11 @@ function runHintRegressionScenario(){
 function findAnyMove(highlight, { includeAllCellMoves=false } = {}){
   const gameState = { tableau, hand, foundations };
   const moves = enumerateMoves({ includeCellShuffles: true, includeAllCellMoves });
-  const move = moves
+  const rankedMove = moves
     .map(candidate => ({ candidate, score: scoreMove(candidate, gameState) }))
     .sort((a, b) => b.score - a.score)
     .map(({ candidate }) => candidate)[0];
-  if(!move) return false;
+  if(!rankedMove) return false;
   if(!highlight) return true;
 
   const move = selectHintMove(moves);
