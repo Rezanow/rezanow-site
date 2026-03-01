@@ -860,29 +860,25 @@ header .controls > *{ flex: 0 0 auto; }
   </div>
 </div>
 
-  <!-- Optional Firebase Integration for Global Stats -->
-  <!--
-    To enable global stats tracking:
-    1. Create a Firebase project and add a Web App.
-    2. Enable Firestore database.
-    3. Uncomment the scripts below and replace the config with yours.
-  -->
-  <!--
+  <!-- Firebase Integration for Global Stats -->
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-analytics.js";
+    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 
     const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_PROJECT_ID.appspot.com",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID"
+      apiKey: "AIzaSyA5HQn8iBuIqlyJro26AwzkPygMHGA47PA",
+      authDomain: "russian-reserve.firebaseapp.com",
+      projectId: "russian-reserve",
+      storageBucket: "russian-reserve.firebasestorage.app",
+      messagingSenderId: "365246014278",
+      appId: "1:365246014278:web:237c08dfca62ca3bbefb47",
+      measurementId: "G-GX92WC6ZLK"
     };
 
     try {
       const app = initializeApp(firebaseConfig);
+      const analytics = getAnalytics(app);
       window.db = getFirestore(app);
       window.logGlobalStat = async function(statData) {
         if (!window.db) return;
@@ -899,7 +895,6 @@ header .controls > *{ flex: 0 0 auto; }
       console.warn("Firebase initialization failed. Global stats disabled.");
     }
   </script>
-  -->
 
 <script>
 const suits = ["♠","♥","♦","♣"];
