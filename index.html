@@ -763,8 +763,8 @@ header .controls > *{ flex: 0 0 auto; }
 
   <div id="modalLose" class="modal-overlay">
     <div class="modal-box">
-      <h2 style="color:#b71c1c">Out of Moves</h2>
-      <p>The cards have won this round.</p>
+      <h2 id="modalLoseTitle" style="color:#b71c1c">Out of Moves</h2>
+      <p id="modalLoseMessage">The cards have won this round.</p>
       <div class="modal-actions">
         <button onclick="undo()">Undo</button>
         <button onclick="start()">New Game</button>
@@ -1625,8 +1625,21 @@ function classifyHintBranches({ includeAllCellMoves=false, depthLimit=4, nodeCap
 
 function showHint(){
   clearHints();
-  if(findAnyMove(true)) return;
-  alert("No suggestions found.");
+  const moveState = getMoveAvailabilityState();
+
+  if(moveState.hasPracticalMoves){
+    findAnyMove(true);
+    return;
+  }
+
+  if(!moveState.hasLegalMoves){
+    announceHint('No legal moves available.');
+    alert('No legal moves available.');
+    return;
+  }
+
+  announceHint('No practical moves found; try undo/new game.');
+  alert('No practical moves found; try undo/new game.');
 }
 
 function canFinalizeLoss(){
@@ -1650,12 +1663,52 @@ function checkGameState(){
     recordGameResult('win');
     document.getElementById('modalWin').classList.add('active');
   } else {
-    // Check for loss (no moves possible)
-    if(!findAnyMove(false, { includeAllCellMoves: true })){
+    const moveState = getMoveAvailabilityState();
+
+    if(!moveState.hasLegalMoves){
       if(canFinalizeLoss()) recordGameResult('loss');
+      setLoseModalContent({
+        title: 'Out of Moves',
+        message: 'No legal moves remain.'
+      });
       document.getElementById('modalLose').classList.add('active');
+      return;
+    }
+
+    if(!moveState.hasPracticalMoves){
+      announceHint('No practical moves remain. Try undo or start a new game.');
     }
   }
+}
+
+function getMoveAvailabilityState({ state=null } = {}){
+  const gameState = state || { tableau, hand, foundations };
+  const legalMoves = enumerateMoves({
+    includeCellShuffles: true,
+    includeAllCellMoves: true,
+    state: gameState
+  });
+
+  const practicalMovePool = enumerateMoves({
+    includeCellShuffles: true,
+    state: gameState
+  });
+  const nonLoopMoves = practicalMovePool.filter(move => !isImmediateReverse(move, recentMoveContext, gameState));
+  const practicalMoves = nonLoopMoves.length ? nonLoopMoves : [];
+
+  return {
+    hasLegalMoves: legalMoves.length > 0,
+    hasPracticalMoves: practicalMoves.length > 0,
+    legalMoves,
+    practicalMoves
+  };
+}
+
+function setLoseModalContent({ title, message }){
+  const titleEl = document.getElementById('modalLoseTitle');
+  const messageEl = document.getElementById('modalLoseMessage');
+  if(titleEl) titleEl.textContent = title;
+  if(messageEl) messageEl.textContent = message;
 }
 
 function enumerateMoves({ includeCellShuffles=true, includeAllCellMoves=false, suppressImmediateReverse=null, state=null } = {}){
@@ -2194,6 +2247,34 @@ function runHintRegressionScenario(){
   );
 
   console.assert(choosesUnlockingKing, 'When two kings can move to an empty tableau, hint should choose the one that unlocks follow-up play.');
+
+  const noPracticalMovesState = {
+    tableau: [
+      [{ suit: '♠', rank: 'Q', value: 12, faceUp: true }],
+      [{ suit: '♥', rank: 'K', value: 13, faceUp: true }],
+      [], [], [], [], []
+    ],
+    hand: [null],
+    foundations: [[], [], [], []]
+  };
+
+  const noPracticalRecentMove = {
+    type: 'pile_to_tableau',
+    source: { pileIdx: 0, cardIdx: 0 },
+    target: { pileIdx: 1, targetCardIdx: 0 },
+    cardKey: 'Q♠'
+  };
+
+  const previousNoPracticalRecentMoveContext = recentMoveContext;
+  const previousNoPracticalPriorMoveContext = priorMoveContext;
+  recentMoveContext = noPracticalRecentMove;
+  priorMoveContext = null;
+  const noPracticalMoveState = getMoveAvailabilityState({ state: noPracticalMovesState });
+  recentMoveContext = previousNoPracticalRecentMoveContext;
+  priorMoveContext = previousNoPracticalPriorMoveContext;
+
+  console.assert(noPracticalMoveState.hasLegalMoves, 'Reverse-only scenario should still report legal moves.');
+  console.assert(!noPracticalMoveState.hasPracticalMoves, 'Reverse-only scenario should report no practical moves.');
 }
 
 
@@ -2608,6 +2689,10 @@ document.getElementById("undoBtn").onclick = undo;
 document.getElementById("autoBtn").onclick = autoPlay;
 document.getElementById("giveUpBtn").onclick = () => {
   if(hasActiveRunToRecordAsLoss() && !runResultRecorded) recordGameResult('loss');
+  setLoseModalContent({
+    title: 'Out of Moves',
+    message: 'The cards have won this round.'
+  });
   document.getElementById('modalLose').classList.add('active');
 };
 document.getElementById("statsBtn").onclick = () => {
