@@ -842,6 +842,7 @@ const SUIT_STYLE_KEY = "rs_suitStyle_v1";
 const GAME_STATE_KEY = "rs_gameState_v1";
 const STATS_HISTORY_KEY = "rs_statsHistory_v1";
 const DEAL_VARIANT_KEY = "rs_dealVariant_v1";
+const DEFAULT_DEAL_VARIANT_KEY = "cells3";
 const MAX_STATS_HISTORY = 100;
 const APP_VERSION = "v0.2.12";
 
@@ -908,10 +909,10 @@ const DEAL_VARIANTS = {
   }
 };
 
-let currentDealVariantKey = "cells3";
+let currentDealVariantKey = DEFAULT_DEAL_VARIANT_KEY;
 
 function getDealVariantConfig(variantKey){
-  return DEAL_VARIANTS[variantKey] || DEAL_VARIANTS.cells3;
+  return DEAL_VARIANTS[variantKey] || DEAL_VARIANTS[DEFAULT_DEAL_VARIANT_KEY];
 }
 
 function getCurrentDealConfig(){
@@ -921,8 +922,13 @@ function getCurrentDealConfig(){
 function loadDealVariantPreference(){
   try {
     const saved = localStorage.getItem(DEAL_VARIANT_KEY);
-    if(saved && DEAL_VARIANTS[saved]) currentDealVariantKey = saved;
+    if(saved && DEAL_VARIANTS[saved]){
+      currentDealVariantKey = saved;
+      return;
+    }
   } catch(e) {}
+
+  currentDealVariantKey = DEFAULT_DEAL_VARIANT_KEY;
 }
 
 function applyDealVariant(variantKey){
@@ -1043,7 +1049,7 @@ function loadPersistedGameState(){
 
     const persistedVariantKey = parsed.currentDealVariantKey && DEAL_VARIANTS[parsed.currentDealVariantKey]
       ? parsed.currentDealVariantKey
-      : (parsed.hand.length >= 0 && parsed.hand.length <= 4 ? `cells${parsed.hand.length}` : "cells3");
+      : (parsed.hand.length >= 0 && parsed.hand.length <= 4 ? `cells${parsed.hand.length}` : DEFAULT_DEAL_VARIANT_KEY);
     applyDealVariant(persistedVariantKey);
 
     const expectedFreeCells = getCurrentDealConfig().freeCells;
