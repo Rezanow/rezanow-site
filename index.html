@@ -1285,13 +1285,23 @@ function recordGameResult(outcome){
 
   // Attempt to log to global stats if Firebase is enabled
   if(typeof window.logGlobalStat === 'function') {
+    const computed = computeStats(history);
     window.logGlobalStat({
       outcome,
       moveCount,
       undoCount,
       elapsedMs,
       variant: currentDealVariantKey,
-      appVersion: APP_VERSION
+      appVersion: APP_VERSION,
+      // Include the player's personal computed stats
+      playerStats: {
+        totalGames: computed.totalGames,
+        winRate: computed.winRate,
+        currentStreak: computed.currentStreak,
+        bestStreak: computed.bestStreak,
+        avgMovesOnWins: computed.avgMovesOnWins,
+        avgTimeOnWins: computed.avgTimeOnWins
+      }
     });
   }
 }
