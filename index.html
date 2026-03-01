@@ -1568,12 +1568,13 @@ function applyMoveToState(state, move){
   };
 }
 
-function classifyHintBranches({ includeAllCellMoves=false, depthLimit=4, nodeCap=280 } = {}){
-  const rootState = { tableau, hand, foundations };
+function classifyHintBranches({ includeAllCellMoves=false, depthLimit=4, nodeCap=280, state=null } = {}){
+  const rootState = state || { tableau, hand, foundations };
   const rootMoves = enumerateMoves({ includeCellShuffles: true, includeAllCellMoves, state: rootState });
   const rootKey = buildCompactStateKey(rootState);
   const branches = [];
   let exploredNodes = 0;
+  let hitNodeCap = false;
 
   for(const move of rootMoves){
     const initial = applyMoveToState(rootState, move);
@@ -1594,6 +1595,7 @@ function classifyHintBranches({ includeAllCellMoves=false, depthLimit=4, nodeCap
     while(stack.length && exploredNodes < nodeCap && !isProgressBranch){
       const current = stack.pop();
       exploredNodes += 1;
+      if(exploredNodes >= nodeCap) hitNodeCap = true;
       if(current.depth >= depthLimit) continue;
 
       const childMoves = enumerateMoves({ includeCellShuffles: true, includeAllCellMoves, state: current.state });
@@ -1620,7 +1622,8 @@ function classifyHintBranches({ includeAllCellMoves=false, depthLimit=4, nodeCap
 
   return {
     branches,
-    progressBranches: branches.filter(branch => branch.kind === 'progress-creating')
+    progressBranches: branches.filter(branch => branch.kind === 'progress-creating'),
+    hitNodeCap
   };
 }
 
@@ -1690,12 +1693,11 @@ function getMoveAvailabilityState({ state=null } = {}){
     state: gameState
   });
 
-  const practicalMovePool = enumerateMoves({
-    includeCellShuffles: true,
+  const { progressBranches } = classifyHintBranches({
+    includeAllCellMoves: false,
     state: gameState
   });
-  const nonLoopMoves = practicalMovePool.filter(move => !isImmediateReverse(move, recentMoveContext, gameState));
-  const practicalMoves = nonLoopMoves.length ? nonLoopMoves : [];
+  const practicalMoves = progressBranches.map(branch => branch.move);
 
   return {
     hasLegalMoves: legalMoves.length > 0,
@@ -2276,14 +2278,47 @@ function runHintRegressionScenario(){
 
   console.assert(noPracticalMoveState.hasLegalMoves, 'Reverse-only scenario should still report legal moves.');
   console.assert(!noPracticalMoveState.hasPracticalMoves, 'Reverse-only scenario should report no practical moves.');
+
+  const cellShuffleCycleState = {
+    tableau: [
+      [{ suit: '♥', rank: 'Q', value: 12, faceUp: true }],
+      [{ suit: '♣', rank: 'J', value: 11, faceUp: true }],
+      [], [], [], [], []
+    ],
+    hand: [null],
+    foundations: [[], [], [], []]
+  };
+
+  const cellShuffleCycleRecentMove = {
+    type: 'pile_to_hand',
+    source: { pileIdx: 1, cardIdx: 0 },
+    target: { handIdx: 0 },
+    cardKey: 'J♣'
+  };
+
+  const previousCellShuffleRecentMoveContext = recentMoveContext;
+  const previousCellShufflePriorMoveContext = priorMoveContext;
+  recentMoveContext = cellShuffleCycleRecentMove;
+  priorMoveContext = null;
+  const cellShuffleMoveState = getMoveAvailabilityState({ state: cellShuffleCycleState });
+  recentMoveContext = previousCellShuffleRecentMoveContext;
+  priorMoveContext = previousCellShufflePriorMoveContext;
+
+  console.assert(cellShuffleMoveState.hasLegalMoves, 'Cell shuffle cycle should still report legal moves.');
+  console.assert(!cellShuffleMoveState.hasPracticalMoves, 'Cell shuffle cycle should report no practical progress moves.');
 }
 
 
 function findAnyMove(highlight, { includeAllCellMoves=false } = {}){
   const gameState = { tableau, hand, foundations };
   const moves = enumerateMoves({ includeCellShuffles: true, includeAllCellMoves });
-  const nonLoopMoves = moves.filter(move => !isImmediateReverse(move, recentMoveContext, gameState));
-  const candidateMoves = nonLoopMoves.length ? nonLoopMoves : [];
+  const branchClassification = classifyHintBranches({ includeAllCellMoves, state: gameState });
+  let candidateMoves = branchClassification.progressBranches.map(branch => branch.move);
+
+  if(!candidateMoves.length && branchClassification.branches.length === 0 && branchClassification.hitNodeCap){
+    const nonLoopMoves = moves.filter(move => !isImmediateReverse(move, recentMoveContext, gameState));
+    candidateMoves = nonLoopMoves.length ? nonLoopMoves : [];
+  }
 
   const rankedMove = candidateMoves
     .map(candidate => ({ candidate, score: scoreMove(candidate, gameState) }))
