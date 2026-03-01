@@ -1693,15 +1693,20 @@ function getMoveAvailabilityState({ state=null } = {}){
     state: gameState
   });
 
-  const { progressBranches } = classifyHintBranches({
+  const branchClassification = classifyHintBranches({
     includeAllCellMoves: false,
     state: gameState
   });
+  const { progressBranches, hitNodeCap } = branchClassification;
   const practicalMoves = progressBranches.map(branch => branch.move);
+  const fallbackPracticalMoves = !practicalMoves.length && hitNodeCap
+    ? legalMoves.filter(move => !isImmediateReverse(move, recentMoveContext, gameState))
+    : [];
+  const hasPracticalMoves = practicalMoves.length > 0 || fallbackPracticalMoves.length > 0;
 
   return {
     hasLegalMoves: legalMoves.length > 0,
-    hasPracticalMoves: practicalMoves.length > 0,
+    hasPracticalMoves,
     legalMoves,
     practicalMoves
   };
@@ -2377,7 +2382,7 @@ function findAnyMove(highlight, { includeAllCellMoves=false } = {}){
   const branchClassification = classifyHintBranches({ includeAllCellMoves, state: gameState });
   let candidateMoves = branchClassification.progressBranches.map(branch => branch.move);
 
-  if(!candidateMoves.length && branchClassification.branches.length === 0 && branchClassification.hitNodeCap){
+  if(!candidateMoves.length && branchClassification.hitNodeCap){
     const nonLoopMoves = moves.filter(move => !isImmediateReverse(move, recentMoveContext, gameState));
     candidateMoves = nonLoopMoves.length ? nonLoopMoves : [];
   }
