@@ -843,7 +843,7 @@ const GAME_STATE_KEY = "rs_gameState_v1";
 const STATS_HISTORY_KEY = "rs_statsHistory_v1";
 const DEAL_VARIANT_KEY = "rs_dealVariant_v1";
 const MAX_STATS_HISTORY = 100;
-const APP_VERSION = "v0.2.11";
+const APP_VERSION = "v0.2.12";
 
 const DEAL_VARIANTS = {
   cells0: {
@@ -1628,7 +1628,7 @@ function enumerateMoves({ includeCellShuffles=true, includeAllCellMoves=false, s
         continue;
       }
 
-      if(gameState.tableau[i].length > 1 && unlocksProgressMove(i, h)){
+      if(unlocksProgressMove(i, h)){
         pushMove('pile_to_hand', { pileIdx: i, cardIdx: gameState.tableau[i].length-1 }, { handIdx: h });
       }
     }
@@ -1820,7 +1820,7 @@ function runHintRegressionScenario(){
 
   const scenarioLastMove = {
     type: 'pile_to_hand',
-    source: { pileIdx: 0, cardIdx: 1 },
+    source: { pileIdx: 0, cardIdx: 0 },
     target: { handIdx: 0 },
     cardKey: '4♥'
   };
@@ -1837,6 +1837,76 @@ function runHintRegressionScenario(){
 
   const endlesslyAlternates = chosen && chosen.type === 'hand_to_tableau' && chosen.target.pileIdx === 0;
   console.assert(!endlesslyAlternates, 'Hint should avoid immediate reverse when alternatives exist.');
+
+  const singleCardUnlockState = {
+    tableau: [
+      [{ suit: '♠', rank: 'K', value: 13, faceUp: true }],
+      [{ suit: '♦', rank: 'Q', value: 12, faceUp: true }],
+      [{ suit: '♥', rank: '7', value: 7, faceUp: true }],
+      [], [], [], []
+    ],
+    hand: [null],
+    foundations: [[], [], [], []]
+  };
+
+  const singleCardUnlockMoves = enumerateMoves({ includeCellShuffles: true, state: singleCardUnlockState });
+  const singleCardUnlockChoice = selectHintMove(singleCardUnlockMoves);
+  const hasUnlockingCellMove = singleCardUnlockMoves.some(move =>
+    move.type === 'pile_to_hand' &&
+    move.source.pileIdx === 0 &&
+    move.target.handIdx === 0
+  );
+
+  const hasFollowupProgressMove = (() => {
+    const simulatedState = {
+      tableau: singleCardUnlockState.tableau.map(p => p.map(card => ({ ...card }))),
+      hand: [...singleCardUnlockState.hand],
+      foundations: singleCardUnlockState.foundations.map(p => p.map(card => ({ ...card })))
+    };
+
+    const movedCard = simulatedState.tableau[0].pop();
+    if(!movedCard) return false;
+    simulatedState.hand[0] = movedCard;
+
+    return enumerateMoves({
+      includeCellShuffles: false,
+      suppressImmediateReverse: { handIdx: 0, pileIdx: 0 },
+      state: simulatedState
+    }).some(move => move.type === 'hand_to_tableau' && move.source.handIdx === 0 && move.target.targetCardIdx === null);
+  })();
+
+  const previousTableau = tableau;
+  const previousHand = hand;
+  const previousFoundations = foundations;
+  const previousHighlightHand = highlightHand;
+  const previousHighlightPileCard = highlightPileCard;
+  const previousAnnounceMoveHint = announceMoveHint;
+
+  let hasFindAnyMoveHint = false;
+  try {
+    tableau = singleCardUnlockState.tableau.map(pile => pile.map(card => ({ ...card })));
+    hand = [...singleCardUnlockState.hand];
+    foundations = singleCardUnlockState.foundations.map(pile => pile.map(card => ({ ...card })));
+    highlightHand = () => {};
+    highlightPileCard = () => {};
+    announceMoveHint = () => {};
+
+    hasFindAnyMoveHint = findAnyMove(true);
+  } finally {
+    tableau = previousTableau;
+    hand = previousHand;
+    foundations = previousFoundations;
+    highlightHand = previousHighlightHand;
+    highlightPileCard = previousHighlightPileCard;
+    announceMoveHint = previousAnnounceMoveHint;
+  }
+
+  const hasHintCandidate = !!singleCardUnlockChoice;
+
+  console.assert(hasUnlockingCellMove, 'Single-card pile should be considered for free-cell unlock moves.');
+  console.assert(hasFollowupProgressMove, 'Free-cell unlock should expose a follow-up king-to-empty-tableau move.');
+  console.assert(hasFindAnyMoveHint, 'findAnyMove(true) should return a hint for the unlock chain scenario.');
+  console.assert(hasHintCandidate, 'Hint selection should not report "No suggestions found" for the unlock chain scenario.');
 }
 
 
