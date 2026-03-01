@@ -1606,6 +1606,79 @@ function enumerateMoves({ includeCellShuffles=true, includeAllCellMoves=false, s
   return moves;
 }
 
+function scoreMove(move, gameState){
+  const state = gameState || { tableau, hand, foundations };
+  const sourcePile = move.source && Number.isInteger(move.source.pileIdx)
+    ? state.tableau[move.source.pileIdx]
+    : null;
+
+  const revealsFaceDown = !!(
+    sourcePile &&
+    Number.isInteger(move.source.cardIdx) &&
+    move.source.cardIdx > 0 &&
+    sourcePile[move.source.cardIdx - 1] &&
+    !sourcePile[move.source.cardIdx - 1].faceUp
+  );
+
+  const createsTableauSequence = move.type === 'pile_to_tableau' &&
+    sourcePile &&
+    Number.isInteger(move.source.cardIdx) &&
+    sourcePile.length - move.source.cardIdx > 1;
+
+  const extendsTableauOnCard =
+    (move.type === 'pile_to_tableau' || move.type === 'hand_to_tableau') &&
+    Number.isInteger(move.target.targetCardIdx);
+
+  const unlocksNearTermProgress = () => {
+    if(move.type !== 'pile_to_hand' || !sourcePile || !Number.isInteger(move.target.handIdx)) return false;
+
+    const simulatedState = {
+      tableau: state.tableau.map(p => p.map(card => ({ ...card }))),
+      hand: [...state.hand],
+      foundations: state.foundations.map(p => p.map(card => ({ ...card })))
+    };
+
+    const fromPile = simulatedState.tableau[move.source.pileIdx];
+    const movedCard = fromPile.pop();
+    if(!movedCard) return false;
+    simulatedState.hand[move.target.handIdx] = movedCard;
+    if(fromPile.length && !fromPile[fromPile.length - 1].faceUp){
+      fromPile[fromPile.length - 1].faceUp = true;
+    }
+
+    const resultingMoves = enumerateMoves({
+      includeCellShuffles: false,
+      suppressImmediateReverse: { handIdx: move.target.handIdx, pileIdx: move.source.pileIdx },
+      state: simulatedState
+    });
+
+    return resultingMoves.some(nextMove =>
+      nextMove.type === 'hand_to_foundation' ||
+      nextMove.type === 'pile_to_foundation' ||
+      nextMove.type === 'hand_to_tableau' ||
+      nextMove.type === 'pile_to_tableau'
+    );
+  };
+
+  let score = 0;
+
+  if(move.type === 'hand_to_foundation' || move.type === 'pile_to_foundation') score += 100;
+  if(move.type === 'pile_to_tableau' || move.type === 'hand_to_tableau') score += 35;
+  if(revealsFaceDown) score += 45;
+  if(createsTableauSequence) score += 15;
+  if(extendsTableauOnCard) score += 10;
+
+  if(move.type === 'pile_to_hand'){
+    const hasNearTermProgress = unlocksNearTermProgress();
+    score += 3;
+    if(revealsFaceDown) score += 35;
+    if(hasNearTermProgress) score += 25;
+    if(!revealsFaceDown && !hasNearTermProgress) score -= 15;
+  }
+
+  return score;
+}
+
 
 function announceHint(message){
   const announcer = document.getElementById('hintAnnouncement');
@@ -1641,8 +1714,12 @@ function announceMoveHint(move){
 }
 
 function findAnyMove(highlight, { includeAllCellMoves=false } = {}){
+  const gameState = { tableau, hand, foundations };
   const moves = enumerateMoves({ includeCellShuffles: true, includeAllCellMoves });
-  const move = moves[0];
+  const move = moves
+    .map(candidate => ({ candidate, score: scoreMove(candidate, gameState) }))
+    .sort((a, b) => b.score - a.score)
+    .map(({ candidate }) => candidate)[0];
   if(!move) return false;
   if(!highlight) return true;
 
