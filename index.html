@@ -2025,7 +2025,11 @@ function isImmediateReverse(candidate, lastMove, gameState = { tableau, hand }){
   return false;
 }
 
-function scoreHintMove(move){
+function scoreHintMove(move, {
+  recentMove = recentMoveContext,
+  priorMove = priorMoveContext,
+  gameState = { tableau, hand }
+} = {}){
   const priority = {
     hand_to_foundation: 0,
     pile_to_foundation: 1,
@@ -2035,8 +2039,8 @@ function scoreHintMove(move){
   };
 
   let score = priority[move.type] ?? 10;
-  if(isImmediateReverse(move, recentMoveContext)) score += 1000;
-  else if(isImmediateReverse(move, priorMoveContext)) score += 100;
+  if(isImmediateReverse(move, recentMove, gameState)) score += 1000;
+  else if(isImmediateReverse(move, priorMove, gameState)) score += 100;
   return score;
 }
 
@@ -2089,19 +2093,29 @@ function scoreEmptyTableauKingHeuristic(move, gameState = { tableau, hand, found
   return heuristicScore;
 }
 
-function selectHintMove(moves){
+function selectHintMove(moves, {
+  gameState = { tableau, hand, foundations },
+  recentMove = recentMoveContext,
+  priorMove = priorMoveContext
+} = {}){
   if(!moves.length) return null;
-  const nonReverseMoves = moves.filter(move => !isImmediateReverse(move, recentMoveContext));
+  const nonReverseMoves = moves.filter(move => !isImmediateReverse(move, recentMove, gameState));
   const candidates = nonReverseMoves.length ? nonReverseMoves : moves;
 
   return candidates
     .map((move, index) => ({
       move,
-      score: scoreHintMove(move),
-      heuristic: scoreEmptyTableauKingHeuristic(move),
+      score: scoreHintMove(move, { recentMove, priorMove, gameState }),
+      strategicScore: scoreMove(move, gameState),
+      heuristic: scoreEmptyTableauKingHeuristic(move, gameState),
       index
     }))
-    .sort((a, b) => a.score - b.score || b.heuristic - a.heuristic || a.index - b.index)[0].move;
+    .sort((a, b) =>
+      a.score - b.score ||
+      b.strategicScore - a.strategicScore ||
+      b.heuristic - a.heuristic ||
+      a.index - b.index
+    )[0].move;
 }
 
 function runHintRegressionScenario(){
@@ -2135,6 +2149,54 @@ function runHintRegressionScenario(){
 
   const endlesslyAlternates = chosen && chosen.type === 'hand_to_tableau' && chosen.target.pileIdx === 0;
   console.assert(!endlesslyAlternates, 'Hint should avoid immediate reverse when alternatives exist.');
+
+  const twoCardTwoCellCycleState = {
+    tableau: [
+      [{ suit: '♣', rank: '6', value: 6, faceUp: true }],
+      [{ suit: '♦', rank: '7', value: 7, faceUp: true }],
+      [], [], [], [], []
+    ],
+    hand: [
+      { suit: '♥', rank: '5', value: 5, faceUp: true },
+      { suit: '♣', rank: '6', value: 6, faceUp: true }
+    ],
+    foundations: [
+      [
+        { suit: '♥', rank: 'A', value: 1, faceUp: true },
+        { suit: '♥', rank: '2', value: 2, faceUp: true },
+        { suit: '♥', rank: '3', value: 3, faceUp: true },
+        { suit: '♥', rank: '4', value: 4, faceUp: true }
+      ],
+      [], [], []
+    ]
+  };
+
+  const twoCardTwoCellCycleLastMove = {
+    type: 'pile_to_hand',
+    source: { pileIdx: 0, cardIdx: 0 },
+    target: { handIdx: 1 },
+    cardKey: '6♣'
+  };
+
+  const twoCardTwoCellCycleMoves = enumerateMoves({ includeCellShuffles: true, state: twoCardTwoCellCycleState });
+  const twoCardTwoCellProgressExists = twoCardTwoCellCycleMoves.some(move =>
+    move.type === 'hand_to_foundation' &&
+    move.source.handIdx === 0
+  );
+  const twoCardTwoCellChoice = selectHintMove(twoCardTwoCellCycleMoves, {
+    gameState: twoCardTwoCellCycleState,
+    recentMove: twoCardTwoCellCycleLastMove,
+    priorMove: null
+  });
+  const choosesTwoCardTwoCellLoopOnlyMove = !!(
+    twoCardTwoCellChoice &&
+    twoCardTwoCellChoice.type === 'hand_to_tableau' &&
+    twoCardTwoCellChoice.source.handIdx === 1 &&
+    twoCardTwoCellChoice.target.pileIdx === 0
+  );
+
+  console.assert(twoCardTwoCellProgressExists, 'Two-card/two-cell cycle scenario should include a progress-creating branch.');
+  console.assert(!choosesTwoCardTwoCellLoopOnlyMove, 'Hint should avoid loop-only cycle moves when progress-creating branches exist.');
 
   const singleCardUnlockState = {
     tableau: [
@@ -2315,20 +2377,14 @@ function findAnyMove(highlight, { includeAllCellMoves=false } = {}){
   const branchClassification = classifyHintBranches({ includeAllCellMoves, state: gameState });
   let candidateMoves = branchClassification.progressBranches.map(branch => branch.move);
 
-  if(!candidateMoves.length && branchClassification.hitNodeCap && moves.length){
+  if(!candidateMoves.length && branchClassification.branches.length === 0 && branchClassification.hitNodeCap){
     const nonLoopMoves = moves.filter(move => !isImmediateReverse(move, recentMoveContext, gameState));
     candidateMoves = nonLoopMoves.length ? nonLoopMoves : [];
   }
 
-  const rankedMove = candidateMoves
-    .map(candidate => ({ candidate, score: scoreMove(candidate, gameState) }))
-    .sort((a, b) => b.score - a.score)
-    .map(({ candidate }) => candidate)[0];
-  if(!rankedMove) return false;
-  if(!highlight) return true;
-
-  const move = selectHintMove(candidateMoves);
+  const move = selectHintMove(candidateMoves, { gameState, recentMove: recentMoveContext, priorMove: priorMoveContext });
   if(!move) return false;
+  if(!highlight) return true;
 
   if(move.type === 'hand_to_foundation' || move.type === 'hand_to_tableau'){
     highlightHand(move.source.handIdx, 'source');
