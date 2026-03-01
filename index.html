@@ -1002,6 +1002,8 @@ let lastTickTs=Date.now();
 let timerActive=false;
 let gameFinished=false;
 let runResultRecorded=false;
+let recentMoveContext = null;
+let priorMoveContext = null;
 
 const MAX_PERSISTED_HISTORY = 150;
 
@@ -1056,6 +1058,8 @@ function loadPersistedGameState(){
     elapsedMs = Number.isFinite(parsed.elapsedMs) ? parsed.elapsedMs : 0;
     gameFinished = !!parsed.gameFinished;
     runResultRecorded = !!parsed.runResultRecorded;
+    recentMoveContext = null;
+    priorMoveContext = null;
     selected = null;
     return true;
   } catch(e){
@@ -1120,9 +1124,26 @@ function resetRunStats(){
   elapsedMs = 0;
   gameFinished = false;
   runResultRecorded = false;
+  recentMoveContext = null;
+  priorMoveContext = null;
   timerActive = false;
   lastTickTs = Date.now();
   updateRunStatsUI();
+}
+
+function cardKey(card){
+  if(!card) return null;
+  return `${card.rank}${card.suit}`;
+}
+
+function recordRecentMove(type, source, target, card){
+  priorMoveContext = recentMoveContext;
+  recentMoveContext = {
+    type,
+    source: source ? { ...source } : null,
+    target: target ? { ...target } : null,
+    cardKey: cardKey(card)
+  };
 }
 
 function loadStatsHistory(){
@@ -1229,6 +1250,8 @@ function undo(){
     elapsedMs = Number.isFinite(prev.elapsedMs) ? prev.elapsedMs : elapsedMs;
     gameFinished = typeof prev.gameFinished === 'boolean' ? prev.gameFinished : false;
     runResultRecorded = typeof prev.runResultRecorded === 'boolean' ? prev.runResultRecorded : false;
+    recentMoveContext = null;
+    priorMoveContext = null;
     selected = null;
     undoCount++;
     lastTickTs = Date.now();
@@ -1243,6 +1266,8 @@ function start(){
   closeModals();
   const config = getCurrentDealConfig();
   tableau=[[],[],[],[],[],[],[]]; foundations=[[],[],[],[]]; hand=Array(config.freeCells).fill(null); historyStack=[]; selected=null;
+  recentMoveContext = null;
+  priorMoveContext = null;
   resetRunStats();
   const deck=makeDeck(); shuffle(deck);
   for(let i=0;i<7;i++){
@@ -1288,6 +1313,7 @@ function executePileToPile(srcI, j, destI){
   tableau[srcI] = tableau[srcI].slice(0, j);
   destPile.push(...moving);
   flipTop(srcI);
+  recordRecentMove('pile_to_tableau', { pileIdx: srcI, cardIdx: j }, { pileIdx: destI, targetCardIdx: destPile.length - moving.length - 1 }, moving[0]);
   persistGameState();
   return true;
 }
@@ -1300,7 +1326,9 @@ function executeHandToPile(handIdx, destI){
   save();
   moveCount++;
   hand[handIdx]=null;
+  const targetCardIdx = destPile.length ? destPile.length - 1 : null;
   destPile.push(c);
+  recordRecentMove('hand_to_tableau', { handIdx }, { pileIdx: destI, targetCardIdx }, c);
   persistGameState();
   return true;
 }
@@ -1313,6 +1341,7 @@ function tryFoundation(c, srcType, srcIdx, cardIdx){
       foundations[f].push(c);
       if(srcType==="pile") { tableau[srcIdx].pop(); flipTop(srcIdx); }
       else if(srcType==="hand") { hand[srcIdx]=null; }
+      recordRecentMove(srcType === 'pile' ? 'pile_to_foundation' : 'hand_to_foundation', srcType === 'pile' ? { pileIdx: srcIdx, cardIdx } : { handIdx: srcIdx }, { foundationIdx: f }, c);
       persistGameState();
       return true;
     }
@@ -1326,8 +1355,10 @@ function executePileToHand(srcI, handIdx){
   if(!p.length) return false;
   save();
   moveCount++;
-  hand[handIdx] = p.pop();
+  const movedCard = p.pop();
+  hand[handIdx] = movedCard;
   flipTop(srcI);
+  recordRecentMove('pile_to_hand', { pileIdx: srcI, cardIdx: p.length }, { handIdx }, movedCard);
   persistGameState();
   return true;
 }
@@ -1713,6 +1744,102 @@ function announceMoveHint(move){
   announceHint('Hint available: move the highlighted card.');
 }
 
+function getMoveCardKey(move, gameState = { tableau, hand }){
+  if(!move) return null;
+  if(move.type === 'hand_to_foundation' || move.type === 'hand_to_tableau'){
+    return cardKey(gameState.hand[move.source.handIdx]);
+  }
+  if(move.type === 'pile_to_foundation' || move.type === 'pile_to_tableau' || move.type === 'pile_to_hand'){
+    const pile = gameState.tableau[move.source.pileIdx] || [];
+    return cardKey(pile[move.source.cardIdx]);
+  }
+  return null;
+}
+
+function isImmediateReverse(candidate, lastMove, gameState = { tableau, hand }){
+  if(!candidate || !lastMove) return false;
+
+  const candidateCard = getMoveCardKey(candidate, gameState);
+  const lastCard = lastMove.cardKey || null;
+
+  if(lastMove.type === 'pile_to_hand' && candidate.type === 'hand_to_tableau'){
+    return (
+      candidate.source.handIdx === lastMove.target?.handIdx &&
+      candidate.target.pileIdx === lastMove.source?.pileIdx &&
+      (!lastCard || candidateCard === lastCard)
+    );
+  }
+
+  if(lastMove.type === 'hand_to_tableau' && candidate.type === 'pile_to_hand'){
+    return (
+      candidate.source.pileIdx === lastMove.target?.pileIdx &&
+      candidate.target.handIdx === lastMove.source?.handIdx &&
+      (!lastCard || candidateCard === lastCard)
+    );
+  }
+
+  return false;
+}
+
+function scoreHintMove(move){
+  const priority = {
+    hand_to_foundation: 0,
+    pile_to_foundation: 1,
+    pile_to_tableau: 2,
+    hand_to_tableau: 3,
+    pile_to_hand: 4
+  };
+
+  let score = priority[move.type] ?? 10;
+  if(isImmediateReverse(move, recentMoveContext)) score += 1000;
+  else if(isImmediateReverse(move, priorMoveContext)) score += 100;
+  return score;
+}
+
+function selectHintMove(moves){
+  if(!moves.length) return null;
+  const nonReverseMoves = moves.filter(move => !isImmediateReverse(move, recentMoveContext));
+  const candidates = nonReverseMoves.length ? nonReverseMoves : moves;
+
+  return candidates
+    .map((move, index) => ({ move, score: scoreHintMove(move), index }))
+    .sort((a, b) => a.score - b.score || a.index - b.index)[0].move;
+}
+
+function runHintRegressionScenario(){
+  const scenarioState = {
+    tableau: [
+      [{ suit: '♥', rank: '5', value: 5, faceUp: true }],
+      [{ suit: '♥', rank: '5', value: 5, faceUp: true }],
+      [{ suit: '♥', rank: '6', value: 6, faceUp: true }],
+      [], [], [], []
+    ],
+    hand: [{ suit: '♥', rank: '4', value: 4, faceUp: true }],
+    foundations: [[], [], [], []]
+  };
+
+  const scenarioLastMove = {
+    type: 'pile_to_hand',
+    source: { pileIdx: 0, cardIdx: 1 },
+    target: { handIdx: 0 },
+    cardKey: '4♥'
+  };
+
+  const moves = enumerateMoves({ includeCellShuffles: true, state: scenarioState });
+
+  const prevRecentMoveContext = recentMoveContext;
+  const prevPriorMoveContext = priorMoveContext;
+  recentMoveContext = scenarioLastMove;
+  priorMoveContext = null;
+  const chosen = selectHintMove(moves);
+  recentMoveContext = prevRecentMoveContext;
+  priorMoveContext = prevPriorMoveContext;
+
+  const endlesslyAlternates = chosen && chosen.type === 'hand_to_tableau' && chosen.target.pileIdx === 0;
+  console.assert(!endlesslyAlternates, 'Hint should avoid immediate reverse when alternatives exist.');
+}
+
+
 function findAnyMove(highlight, { includeAllCellMoves=false } = {}){
   const gameState = { tableau, hand, foundations };
   const moves = enumerateMoves({ includeCellShuffles: true, includeAllCellMoves });
@@ -1722,6 +1849,9 @@ function findAnyMove(highlight, { includeAllCellMoves=false } = {}){
     .map(({ candidate }) => candidate)[0];
   if(!move) return false;
   if(!highlight) return true;
+
+  const move = selectHintMove(moves);
+  if(!move) return false;
 
   if(move.type === 'hand_to_foundation' || move.type === 'hand_to_tableau'){
     highlightHand(move.source.handIdx, 'source');
@@ -2143,6 +2273,7 @@ try {
 
 loadDealVariantPreference();
 applyDealVariant(currentDealVariantKey);
+runHintRegressionScenario();
 
 if(loadPersistedGameState()){
   startTimer();
