@@ -1082,6 +1082,42 @@ let cachedVisitedKeysState = { moveCount: -1, undoCount: -1 };
 
 const MAX_PERSISTED_HISTORY = 150;
 
+function isValidCard(c) {
+  if (!c || typeof c !== 'object') return false;
+  if (!suits.includes(c.suit)) return false;
+  if (!ranks.includes(c.rank)) return false;
+  if (typeof c.value !== 'number' || c.value < 1 || c.value > 13) return false;
+  if (typeof c.faceUp !== 'boolean') return false;
+  return true;
+}
+
+function isValidGameState(state) {
+  if (!state || typeof state !== 'object') return false;
+
+  if (!Array.isArray(state.tableau) || state.tableau.length !== 7) return false;
+  for (const pile of state.tableau) {
+    if (!Array.isArray(pile)) return false;
+    for (const card of pile) {
+      if (!isValidCard(card)) return false;
+    }
+  }
+
+  if (!Array.isArray(state.foundations) || state.foundations.length !== 4) return false;
+  for (const pile of state.foundations) {
+    if (!Array.isArray(pile)) return false;
+    for (const card of pile) {
+      if (!isValidCard(card)) return false;
+    }
+  }
+
+  if (!Array.isArray(state.hand)) return false;
+  for (const card of state.hand) {
+    if (card !== null && !isValidCard(card)) return false;
+  }
+
+  return true;
+}
+
 function persistGameState(){
   const persistedHistory = historyStack.slice(-MAX_PERSISTED_HISTORY);
   const snapshot = {
@@ -1113,8 +1149,8 @@ function loadPersistedGameState(){
     const raw = localStorage.getItem(GAME_STATE_KEY);
     if(!raw) return false;
     const parsed = JSON.parse(raw);
-    if(!parsed || !Array.isArray(parsed.tableau) || !Array.isArray(parsed.foundations) || !Array.isArray(parsed.hand)) return false;
-    if(parsed.tableau.length !== 7 || parsed.foundations.length !== 4) return false;
+
+    if(!isValidGameState(parsed)) return false;
 
     const persistedVariantKey = parsed.currentDealVariantKey && DEAL_VARIANTS[parsed.currentDealVariantKey]
       ? parsed.currentDealVariantKey
@@ -1336,7 +1372,7 @@ function importSave() {
     const decoded = decodeURIComponent(atob(input));
     const parsed = JSON.parse(decoded);
 
-    if (!parsed || !Array.isArray(parsed.tableau) || !Array.isArray(parsed.foundations) || !Array.isArray(parsed.hand)) {
+    if (!isValidGameState(parsed)) {
       throw new Error("Invalid save format");
     }
 
