@@ -2289,6 +2289,16 @@ function scheduleFit(){
 export function initGame(){
 document.getElementById("undoBtn").onclick = undo;
 document.getElementById("autoBtn").onclick = autoPlay;
+document.getElementById("hintBtn").addEventListener('click', showHint);
+document.getElementById("exportBtn").addEventListener('click', exportSave);
+document.getElementById("importBtn").addEventListener('click', showImportModal);
+document.getElementById("playAgainBtn").addEventListener('click', start);
+document.getElementById("loseUndoBtn").addEventListener('click', undo);
+document.getElementById("newGameBtn").addEventListener('click', start);
+document.getElementById("copyExportBtn").addEventListener('click', copyExportData);
+document.getElementById("closeExportBtn").addEventListener('click', closeExportModal);
+document.getElementById("confirmImportBtn").addEventListener('click', importSave);
+document.getElementById("cancelImportBtn").addEventListener('click', closeImportModal);
 document.getElementById("giveUpBtn").onclick = () => {
   if(hasActiveRunToRecordAsLoss() && !runResultRecorded) recordGameResult('loss');
   setLoseModalContent({
