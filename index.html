@@ -906,6 +906,7 @@ const suitClass = { "♠":"spades", "♥":"hearts", "♦":"diamonds", "♣":"clu
 const SUIT_STYLE_KEY = "rs_suitStyle_v1";
 const GAME_STATE_KEY = "rs_gameState_v1";
 const STATS_HISTORY_KEY = "rs_statsHistory_v1";
+const SAVE_PAYLOAD_VERSION = 1;
 const DEAL_VARIANT_KEY = "rs_dealVariant_v1";
 const DEFAULT_DEAL_VARIANT_KEY = "cells3";
 const MAX_STATS_HISTORY = 100000;
@@ -1281,6 +1282,22 @@ function saveStatsHistory(history){
   } catch(e) {}
 }
 
+function isValidStatsRecord(record){
+  if(!record || typeof record !== 'object' || Array.isArray(record)) return false;
+  if(record.outcome !== 'win' && record.outcome !== 'loss') return false;
+  if(!Number.isFinite(record.moveCount) || record.moveCount < 0) return false;
+  if(!Number.isFinite(record.undoCount) || record.undoCount < 0) return false;
+  if(!Number.isFinite(record.elapsedMs) || record.elapsedMs < 0) return false;
+  if(!Number.isFinite(record.finishedAt) || record.finishedAt < 0) return false;
+  if(record.variant !== undefined && record.variant !== null && typeof record.variant !== 'string') return false;
+  return true;
+}
+
+function sanitizeStatsHistory(statsHistory){
+  if(!Array.isArray(statsHistory)) return [];
+  return statsHistory.every(isValidStatsRecord) ? statsHistory : [];
+}
+
 function recordGameResult(outcome){
   if(gameFinished || runResultRecorded) return;
   syncTimerPresence();
@@ -1364,7 +1381,29 @@ function exportSave() {
     alert("No active game to export.");
     return;
   }
-  const encoded = btoa(encodeURIComponent(gameStateStr));
+
+  let gameState;
+  try {
+    gameState = JSON.parse(gameStateStr);
+  } catch (e) {
+    alert("Unable to export: game state is corrupted.");
+    return;
+  }
+
+  let statsHistory = [];
+  try {
+    statsHistory = JSON.parse(localStorage.getItem(STATS_HISTORY_KEY) || '[]');
+  } catch (e) {
+    statsHistory = [];
+  }
+
+  const payload = {
+    version: SAVE_PAYLOAD_VERSION,
+    gameState,
+    statsHistory: Array.isArray(statsHistory) ? statsHistory : []
+  };
+
+  const encoded = btoa(encodeURIComponent(JSON.stringify(payload)));
   document.getElementById('exportSaveData').value = encoded;
   document.getElementById('modalExport').classList.add('active');
 }
@@ -1392,11 +1431,25 @@ function importSave() {
     const decoded = decodeURIComponent(atob(input));
     const parsed = JSON.parse(decoded);
 
-    if (!isValidGameState(parsed)) {
+    let gameStateToImport = null;
+    let statsHistoryToImport = [];
+    let importedStats = false;
+
+    if (isValidGameState(parsed)) {
+      gameStateToImport = parsed;
+    } else if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && parsed.gameState !== undefined) {
+      if (!isValidGameState(parsed.gameState)) {
+        throw new Error("Invalid save format");
+      }
+      gameStateToImport = parsed.gameState;
+      statsHistoryToImport = sanitizeStatsHistory(parsed.statsHistory);
+      importedStats = statsHistoryToImport.length > 0;
+    } else {
       throw new Error("Invalid save format");
     }
 
-    localStorage.setItem(GAME_STATE_KEY, decoded);
+    localStorage.setItem(GAME_STATE_KEY, JSON.stringify(gameStateToImport));
+    localStorage.setItem(STATS_HISTORY_KEY, JSON.stringify(statsHistoryToImport.slice(-MAX_STATS_HISTORY)));
     document.getElementById('modalImport').classList.remove('active');
 
     // Prevent syncTimerPresence from triggering on reload and immediately overwriting our newly imported state
@@ -1410,7 +1463,7 @@ function importSave() {
       clearInterval(timerInterval);
     }
 
-    alert("Save imported successfully! The game will now reload.");
+    alert(`Save imported successfully (${importedStats ? 'game + stats' : 'game only'}). The game will now reload.`);
     location.reload();
 
   } catch (e) {
