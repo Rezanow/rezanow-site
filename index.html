@@ -792,7 +792,7 @@ header .controls > *{ flex: 0 0 auto; }
     <div class="modal-box" style="max-width: 400px; width: 90%; background: #ffffff; color: #111;">
       <h2>Export Save Data</h2>
       <p style="font-size: 13px;">Copy this code to transfer your progress to another device.</p>
-      <textarea id="exportSaveData" readonly style="width: 100%; height: 80px; margin-bottom: 10px; font-size: 11px; resize: none; color: #111; background: #fff;"></textarea>
+      <textarea id="exportSaveData" readonly autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" inputmode="text" style="width: 100%; height: 80px; margin-bottom: 10px; font-size: 11px; resize: none; color: #111; background: #fff;"></textarea>
       <div class="modal-actions">
         <button id="copyExportBtn" onclick="copyExportData()">Copy</button>
         <button onclick="closeExportModal()">Close</button>
@@ -804,7 +804,7 @@ header .controls > *{ flex: 0 0 auto; }
     <div class="modal-box" style="max-width: 400px; width: 90%; background: #ffffff; color: #111;">
       <h2>Import Save Data</h2>
       <p style="font-size: 13px;">Paste a previously exported save code here.</p>
-      <textarea id="importSaveData" style="width: 100%; height: 80px; margin-bottom: 10px; font-size: 11px; resize: none; color: #111; background: #fff;"></textarea>
+      <textarea id="importSaveData" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" inputmode="text" style="width: 100%; height: 80px; margin-bottom: 10px; font-size: 11px; resize: none; color: #111; background: #fff;"></textarea>
       <div class="modal-actions">
         <button onclick="importSave()">Import</button>
         <button onclick="closeImportModal()">Cancel</button>
