@@ -2287,19 +2287,70 @@ function scheduleFit(){
   });
 }
 export function initGame(){
-  const missingIds = new Set();
-  const getEl = (id) => {
-    const el = document.getElementById(id);
-    if(!el) missingIds.add(id);
-    return el;
-  };
-  const getRequiredEl = (id) => getEl(id);
-  const bindClick = (id, handler) => {
-    const el = getEl(id);
-    if(!el) return null;
-    el.addEventListener('click', handler);
-    return el;
-  };
+const undoBtn = document.getElementById('undoBtn');
+const tableauRoot = document.getElementById('tableau');
+if(!undoBtn || !tableauRoot){
+  console.error('[initGame] Missing critical DOM element(s).', {
+    undoBtn: Boolean(undoBtn),
+    tableau: Boolean(tableauRoot)
+  });
+  return;
+}
+
+undoBtn.onclick = undo;
+document.getElementById("autoBtn").onclick = autoPlay;
+document.getElementById("hintBtn").addEventListener('click', showHint);
+document.getElementById("exportBtn").addEventListener('click', exportSave);
+document.getElementById("importBtn").addEventListener('click', showImportModal);
+document.getElementById("playAgainBtn").addEventListener('click', start);
+document.getElementById("loseUndoBtn").addEventListener('click', undo);
+document.getElementById("newGameBtn").addEventListener('click', start);
+document.getElementById("copyExportBtn").addEventListener('click', copyExportData);
+document.getElementById("closeExportBtn").addEventListener('click', closeExportModal);
+document.getElementById("confirmImportBtn").addEventListener('click', importSave);
+document.getElementById("cancelImportBtn").addEventListener('click', closeImportModal);
+document.getElementById("giveUpBtn").onclick = () => {
+  if(hasActiveRunToRecordAsLoss() && !runResultRecorded) recordGameResult('loss');
+  setLoseModalContent({
+    title: 'Out of Moves',
+    message: 'The cards have won this round.'
+  });
+  document.getElementById('modalLose').classList.add('active');
+};
+document.getElementById("statsBtn").onclick = () => {
+  renderStatsModal();
+  document.getElementById('modalStats').classList.add('active');
+};
+document.getElementById("closeStatsBtn").onclick = () => document.getElementById('modalStats').classList.remove('active');
+document.getElementById("resetStatsBtn").onclick = () => {
+  saveStatsHistory([]);
+  renderStatsModal();
+};
+window.addEventListener('resize', scheduleFit, {passive:true});
+window.addEventListener('orientationchange', scheduleFit, {passive:true});
+if(window.visualViewport){
+  visualViewport.addEventListener('resize', scheduleFit, {passive:true});
+  visualViewport.addEventListener('scroll', scheduleFit, {passive:true});
+}
+// Re-fit if the app container changes size (e.g., address bar show/hide)
+try {
+  const ro = new ResizeObserver(() => scheduleFit());
+  ro.observe(document.body);
+} catch(e) {}
+
+loadDealVariantPreference();
+applyDealVariant(currentDealVariantKey);
+// Use ?debug=1 to enable runtime hint regression assertions.
+const isDebugMode = new URLSearchParams(location.search).get('debug') === '1' || ['localhost','127.0.0.1'].includes(location.hostname);
+if(isDebugMode){
+  console.info('[debug] Hint regression assertions enabled.');
+  runHintRegressionScenario();
+}
+
+const hasImportApplyPending = localStorage.getItem(IMPORT_APPLY_PENDING_KEY) === '1';
+if(hasImportApplyPending){
+  suppressPersistenceWrites = true;
+}
 
   const undoBtn = getRequiredEl('undoBtn');
   const tableauRoot = getRequiredEl('tableau');
