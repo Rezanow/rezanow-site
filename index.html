@@ -1195,7 +1195,8 @@ function loadPersistedGameState(){
   }
 }
 
-function applyImportedSaveState(rawPayload){
+function applyImportedSaveState(rawPayload, options = {}){
+  const { reloadAfterImport = false } = options;
   const parsed = typeof rawPayload === 'string' ? JSON.parse(rawPayload) : rawPayload;
   if (!isValidGameState(parsed)) {
     throw new Error('Invalid save format');
@@ -1203,7 +1204,11 @@ function applyImportedSaveState(rawPayload){
 
   const normalizedPayload = JSON.stringify(parsed);
   localStorage.setItem(GAME_STATE_KEY, normalizedPayload);
-  localStorage.setItem(IMPORT_APPLY_PENDING_KEY, '1');
+  if(reloadAfterImport){
+    localStorage.setItem(IMPORT_APPLY_PENDING_KEY, '1');
+  } else {
+    localStorage.removeItem(IMPORT_APPLY_PENDING_KEY);
+  }
 
   const previousSuppress = suppressPersistenceWrites;
   suppressPersistenceWrites = true;
@@ -1525,23 +1530,11 @@ function importSave() {
       throw new Error("Invalid save format");
     }
 
-    localStorage.setItem(GAME_STATE_KEY, JSON.stringify(gameStateToImport));
+    applyImportedSaveState(gameStateToImport);
     localStorage.setItem(STATS_HISTORY_KEY, JSON.stringify(statsHistoryToImport.slice(-MAX_STATS_HISTORY)));
-    document.getElementById('modalImport').classList.remove('active');
+    renderStatsModal();
 
-    // Prevent syncTimerPresence from triggering on reload and immediately overwriting our newly imported state
-    window.removeEventListener('blur', syncTimerPresence);
-    document.removeEventListener('visibilitychange', syncTimerPresence);
-
-    // Completely disable any further persistence to protect the imported state
-    // during the page unload process triggered by location.reload().
-    window.persistGameState = () => {};
-    if (typeof timerInterval !== 'undefined' && timerInterval) {
-      clearInterval(timerInterval);
-    }
-
-    alert(`Save imported successfully (${importedStats ? 'game + stats' : 'game only'}). The game will now reload.`);
-    location.reload();
+    alert(`Save imported successfully (${importedStats ? 'game + stats' : 'game only'}).`);
 
   } catch (e) {
     alert("Invalid save data. Please check the code, try pasting again, or use the Copy button.");
