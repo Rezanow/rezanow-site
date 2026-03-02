@@ -1082,6 +1082,8 @@ let cachedVisitedKeys = null;
 let cachedVisitedKeysState = { moveCount: -1, undoCount: -1 };
 
 const MAX_PERSISTED_HISTORY = 150;
+const IMPORT_APPLY_PENDING_KEY = 'RS_IMPORT_APPLY_PENDING';
+let suppressPersistenceWrites = false;
 
 function isValidCard(c) {
   if (!c || typeof c !== 'object') return false;
@@ -1120,6 +1122,7 @@ function isValidGameState(state) {
 }
 
 function persistGameState(){
+  if(suppressPersistenceWrites) return;
   const persistedHistory = historyStack.slice(-MAX_PERSISTED_HISTORY);
   const snapshot = {
     tableau,
@@ -1145,6 +1148,39 @@ function persistGameState(){
   }
 }
 
+function applyHydratedGameState(parsed){
+  const persistedVariantKey = parsed.currentDealVariantKey && DEAL_VARIANTS[parsed.currentDealVariantKey]
+    ? parsed.currentDealVariantKey
+    : (parsed.hand.length >= 0 && parsed.hand.length <= 4 ? `cells${parsed.hand.length}` : DEFAULT_DEAL_VARIANT_KEY);
+  applyDealVariant(persistedVariantKey);
+
+  const expectedFreeCells = getCurrentDealConfig().freeCells;
+
+  // Adjust legacy or imported save's hand length to match the expected configuration
+  if(parsed.hand.length > expectedFreeCells) {
+     // If there are more slots than expected, we can only trim them if they are empty
+     const extraCards = parsed.hand.slice(expectedFreeCells).filter(c => c !== null);
+     if (extraCards.length > 0) return false; // Reject save if it would drop real cards
+     parsed.hand = parsed.hand.slice(0, expectedFreeCells);
+  } else while(parsed.hand.length < expectedFreeCells) {
+     parsed.hand.push(null);
+  }
+
+  tableau = parsed.tableau;
+  foundations = parsed.foundations;
+  hand = parsed.hand;
+  historyStack = Array.isArray(parsed.historyStack) ? parsed.historyStack : [];
+  moveCount = Number.isFinite(parsed.moveCount) ? parsed.moveCount : 0;
+  undoCount = Number.isFinite(parsed.undoCount) ? parsed.undoCount : 0;
+  elapsedMs = Number.isFinite(parsed.elapsedMs) ? parsed.elapsedMs : 0;
+  gameFinished = !!parsed.gameFinished;
+  runResultRecorded = !!parsed.runResultRecorded;
+  recentMoveContext = null;
+  priorMoveContext = null;
+  selected = null;
+  return true;
+}
+
 function loadPersistedGameState(){
   try {
     const raw = localStorage.getItem(GAME_STATE_KEY);
@@ -1153,39 +1189,38 @@ function loadPersistedGameState(){
 
     if(!isValidGameState(parsed)) return false;
 
-    const persistedVariantKey = parsed.currentDealVariantKey && DEAL_VARIANTS[parsed.currentDealVariantKey]
-      ? parsed.currentDealVariantKey
-      : (parsed.hand.length >= 0 && parsed.hand.length <= 4 ? `cells${parsed.hand.length}` : DEFAULT_DEAL_VARIANT_KEY);
-    applyDealVariant(persistedVariantKey);
-
-    const expectedFreeCells = getCurrentDealConfig().freeCells;
-
-    // Adjust legacy or imported save's hand length to match the expected configuration
-    if(parsed.hand.length > expectedFreeCells) {
-       // If there are more slots than expected, we can only trim them if they are empty
-       const extraCards = parsed.hand.slice(expectedFreeCells).filter(c => c !== null);
-       if (extraCards.length > 0) return false; // Reject save if it would drop real cards
-       parsed.hand = parsed.hand.slice(0, expectedFreeCells);
-    } else while(parsed.hand.length < expectedFreeCells) {
-       parsed.hand.push(null);
-    }
-
-    tableau = parsed.tableau;
-    foundations = parsed.foundations;
-    hand = parsed.hand;
-    historyStack = Array.isArray(parsed.historyStack) ? parsed.historyStack : [];
-    moveCount = Number.isFinite(parsed.moveCount) ? parsed.moveCount : 0;
-    undoCount = Number.isFinite(parsed.undoCount) ? parsed.undoCount : 0;
-    elapsedMs = Number.isFinite(parsed.elapsedMs) ? parsed.elapsedMs : 0;
-    gameFinished = !!parsed.gameFinished;
-    runResultRecorded = !!parsed.runResultRecorded;
-    recentMoveContext = null;
-    priorMoveContext = null;
-    selected = null;
-    return true;
+    return applyHydratedGameState(parsed);
   } catch(e){
     return false;
   }
+}
+
+function applyImportedSaveState(rawPayload){
+  const parsed = typeof rawPayload === 'string' ? JSON.parse(rawPayload) : rawPayload;
+  if (!isValidGameState(parsed)) {
+    throw new Error('Invalid save format');
+  }
+
+  const normalizedPayload = JSON.stringify(parsed);
+  localStorage.setItem(GAME_STATE_KEY, normalizedPayload);
+  localStorage.setItem(IMPORT_APPLY_PENDING_KEY, '1');
+
+  const previousSuppress = suppressPersistenceWrites;
+  suppressPersistenceWrites = true;
+  const applied = applyHydratedGameState(parsed);
+  suppressPersistenceWrites = previousSuppress;
+
+  if(!applied) {
+    throw new Error('Imported save is incompatible with current deal configuration');
+  }
+
+  closeModals();
+  clearHints();
+  updateRunStatsUI();
+  lastTickTs = Date.now();
+  fit();
+  render();
+  syncTimerPresence();
 }
 
 
@@ -3131,6 +3166,11 @@ if(isDebugMode){
   runHintRegressionScenario();
 }
 
+const hasImportApplyPending = localStorage.getItem(IMPORT_APPLY_PENDING_KEY) === '1';
+if(hasImportApplyPending){
+  suppressPersistenceWrites = true;
+}
+
 if(loadPersistedGameState()){
   startTimer();
   fit();
@@ -3138,6 +3178,10 @@ if(loadPersistedGameState()){
   restorePostLoadModalState();
 } else {
   start();
+}
+if(hasImportApplyPending){
+  localStorage.removeItem(IMPORT_APPLY_PENDING_KEY);
+  suppressPersistenceWrites = false;
 }
 renderStatsModal();
 
