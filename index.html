@@ -2936,6 +2936,7 @@ function handleTouchEnd(e){
     lastTouchEndTs = Date.now();
   } else {
     e.preventDefault();
+    clearHints();
     if(tryAutoMoveFromTap(dragSource.type, dragSource.idx, dragSource.cardIdx)){
       selected = null;
       render();
@@ -3046,6 +3047,7 @@ function createCardEl(c, type, idx, cardIdx){
       e.preventDefault();
       return;
     }
+    clearHints();
     if(tryAutoMoveFromTap(type, idx, cardIdx)){
       selected = null;
       render();
