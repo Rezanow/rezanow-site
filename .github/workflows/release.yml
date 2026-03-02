@@ -34,16 +34,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Enforce single runtime source
-        shell: bash
-        run: ./scripts/check-runtime-single-source.sh
-
       - name: Prepare build artifact
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p build
-          cp -R js build/js
           cp index.html build/index.html
 
       - name: Upload build artifact
