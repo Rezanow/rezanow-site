@@ -1463,7 +1463,16 @@ function importSave() {
   if (!input) return;
 
   try {
-    const decoded = decodeURIComponent(atob(input));
+    const normalizedInput = (() => {
+      let normalized = input.replace(/\s+/g, '').replace(/-/g, '+').replace(/_/g, '/');
+      const paddingLength = normalized.length % 4;
+      if (paddingLength) {
+        normalized += '='.repeat(4 - paddingLength);
+      }
+      return normalized;
+    })();
+
+    const decoded = decodeURIComponent(atob(normalizedInput));
     const parsed = JSON.parse(decoded);
 
     let gameStateToImport = null;
@@ -1502,7 +1511,7 @@ function importSave() {
     location.reload();
 
   } catch (e) {
-    alert("Invalid save data. Please check the code and try again.");
+    alert("Invalid save data. Please check the code, try pasting again, or use the Copy button.");
   }
 }
 
