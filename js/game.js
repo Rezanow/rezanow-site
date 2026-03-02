@@ -2352,27 +2352,105 @@ if(hasImportApplyPending){
   suppressPersistenceWrites = true;
 }
 
-if(loadPersistedGameState()){
-  startTimer();
-  fit();
-  render();
-  restorePostLoadModalState();
-} else {
-  start();
-}
-if(hasImportApplyPending){
-  localStorage.removeItem(IMPORT_APPLY_PENDING_KEY);
-  suppressPersistenceWrites = false;
-}
-renderStatsModal();
+  const undoBtn = getRequiredEl('undoBtn');
+  const tableauRoot = getRequiredEl('tableau');
+  if(!undoBtn || !tableauRoot){
+    console.error('[initGame] Missing critical DOM element(s).', {
+      undoBtn: Boolean(undoBtn),
+      tableau: Boolean(tableauRoot)
+    });
+    console.warn('[initGame] Missing DOM IDs:', Array.from(missingIds));
+    return;
+  }
 
-initSuitStyleUI();
-initDealVariantUI();
-renderAppVersion();
-const headerEl = document.querySelector('header');
-const menuToggleBtn = document.getElementById('menuToggle');
-const headerControlsEl = document.getElementById('headerControls');
-const mobileMenuQuery = window.matchMedia('(max-width: 520px)');
+  undoBtn.onclick = undo;
+
+  const autoBtn = getEl('autoBtn');
+  if(autoBtn) autoBtn.onclick = autoPlay;
+
+  bindClick('hintBtn', showHint);
+  bindClick('exportBtn', exportSave);
+  bindClick('importBtn', showImportModal);
+  bindClick('playAgainBtn', start);
+  bindClick('loseUndoBtn', undo);
+  bindClick('newGameBtn', start);
+  bindClick('copyExportBtn', copyExportData);
+  bindClick('closeExportBtn', closeExportModal);
+  bindClick('confirmImportBtn', importSave);
+  bindClick('cancelImportBtn', closeImportModal);
+
+  const giveUpBtn = getEl('giveUpBtn');
+  if(giveUpBtn) giveUpBtn.onclick = () => {
+    if(hasActiveRunToRecordAsLoss() && !runResultRecorded) recordGameResult('loss');
+    setLoseModalContent({
+      title: 'Out of Moves',
+      message: 'The cards have won this round.'
+    });
+    document.getElementById('modalLose').classList.add('active');
+  };
+
+  const statsBtn = getEl('statsBtn');
+  if(statsBtn) statsBtn.onclick = () => {
+    renderStatsModal();
+    document.getElementById('modalStats').classList.add('active');
+  };
+
+  const closeStatsBtn = getEl('closeStatsBtn');
+  if(closeStatsBtn) closeStatsBtn.onclick = () => document.getElementById('modalStats').classList.remove('active');
+
+  const resetStatsBtn = getEl('resetStatsBtn');
+  if(resetStatsBtn) resetStatsBtn.onclick = () => {
+    saveStatsHistory([]);
+    renderStatsModal();
+  };
+
+  window.addEventListener('resize', scheduleFit, {passive:true});
+  window.addEventListener('orientationchange', scheduleFit, {passive:true});
+  if(window.visualViewport){
+    visualViewport.addEventListener('resize', scheduleFit, {passive:true});
+    visualViewport.addEventListener('scroll', scheduleFit, {passive:true});
+  }
+  // Re-fit if the app container changes size (e.g., address bar show/hide)
+  try {
+    const ro = new ResizeObserver(() => scheduleFit());
+    ro.observe(document.body);
+  } catch(e) {}
+
+  loadDealVariantPreference();
+  applyDealVariant(currentDealVariantKey);
+  // Use ?debug=1 to enable runtime hint regression assertions.
+  const isDebugMode = new URLSearchParams(location.search).get('debug') === '1' || ['localhost','127.0.0.1'].includes(location.hostname);
+  if(isDebugMode){
+    console.info('[debug] Hint regression assertions enabled.');
+    runHintRegressionScenario();
+  }
+
+  const hasImportApplyPending = localStorage.getItem(IMPORT_APPLY_PENDING_KEY) === '1';
+  if(hasImportApplyPending){
+    suppressPersistenceWrites = true;
+  }
+
+  if(loadPersistedGameState()){
+    startTimer();
+    fit();
+    render();
+    restorePostLoadModalState();
+  } else {
+    start();
+  }
+  if(hasImportApplyPending){
+    localStorage.removeItem(IMPORT_APPLY_PENDING_KEY);
+    suppressPersistenceWrites = false;
+  }
+  renderStatsModal();
+
+  initSuitStyleUI();
+  initDealVariantUI();
+  renderAppVersion();
+  const headerEl = document.querySelector('header');
+  const menuToggleBtn = document.getElementById('menuToggle');
+  const headerControlsEl = document.getElementById('headerControls');
+  const mobileMenuQuery = window.matchMedia('(max-width: 520px)');
 
 function syncMenuAccessibility(){
   if(!headerEl || !menuToggleBtn || !headerControlsEl) return;
@@ -2428,21 +2506,27 @@ window.addEventListener('focus', syncTimerPresence);
 window.addEventListener('blur', syncTimerPresence);
 document.addEventListener('visibilitychange', syncTimerPresence);
 
-// Rules modal behavior
-const rulesBtn = document.getElementById('rulesBtn');
-const modal = document.getElementById('rulesModal');
-const closeBtn = document.getElementById('closeRulesBtn');
+  // Rules modal behavior
+  const rulesBtn = getEl('rulesBtn');
+  const modal = getEl('rulesModal');
+  const closeBtn = getEl('closeRulesBtn');
 
-if(rulesBtn && modal){
-  rulesBtn.addEventListener('click', () => modal.classList.remove('hidden'));
-}
-if(closeBtn && modal){
-  closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
-}
-if(modal){
-  modal.addEventListener('click', (e) => {
-    if(e.target === modal) modal.classList.add('hidden');
-  });
-}
+  if(rulesBtn && modal){
+    rulesBtn.addEventListener('click', () => modal.classList.remove('hidden'));
+  }
+  if(closeBtn && modal){
+    closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
+  }
+  if(modal){
+    modal.addEventListener('click', (e) => {
+      if(e.target === modal) modal.classList.add('hidden');
+    });
+  }
+
+  if(missingIds.size){
+    console.warn('[initGame] Missing DOM IDs:', Array.from(missingIds));
+  }
+
+
 
 }
