@@ -39,10 +39,11 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p build
+          cp -R js build/js
           cp index.html build/index.html
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: site-build
-          path: build/index.html
+          path: build/
