@@ -2287,7 +2287,17 @@ function scheduleFit(){
   });
 }
 export function initGame(){
-document.getElementById("undoBtn").onclick = undo;
+const undoBtn = document.getElementById('undoBtn');
+const tableauRoot = document.getElementById('tableau');
+if(!undoBtn || !tableauRoot){
+  console.error('[initGame] Missing critical DOM element(s).', {
+    undoBtn: Boolean(undoBtn),
+    tableau: Boolean(tableauRoot)
+  });
+  return;
+}
+
+undoBtn.onclick = undo;
 document.getElementById("autoBtn").onclick = autoPlay;
 document.getElementById("hintBtn").addEventListener('click', showHint);
 document.getElementById("exportBtn").addEventListener('click', exportSave);
