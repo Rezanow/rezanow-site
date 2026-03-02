@@ -1443,14 +1443,47 @@ function exportSave() {
   document.getElementById('modalExport').classList.add('active');
 }
 
-function copyExportData() {
+async function copyExportData() {
   const input = document.getElementById('exportSaveData');
-  input.select();
-  document.execCommand('copy');
   const btn = document.getElementById('copyExportBtn');
   const oldText = btn.textContent;
-  btn.textContent = "Copied!";
-  setTimeout(() => btn.textContent = oldText, 2000);
+
+  const setButtonTextTemporarily = (text) => {
+    btn.textContent = text;
+    setTimeout(() => btn.textContent = oldText, 2000);
+  };
+
+  if (!input.value.trim()) {
+    setButtonTextTemporarily("No code yet");
+    return;
+  }
+
+  let copied = false;
+  if (window.isSecureContext && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+    try {
+      await navigator.clipboard.writeText(input.value);
+      copied = true;
+    } catch (e) {
+      copied = false;
+    }
+  }
+
+  if (!copied) {
+    try {
+      input.focus();
+      input.select();
+      input.setSelectionRange(0, input.value.length);
+      copied = document.execCommand('copy');
+    } catch (e) {
+      copied = false;
+    }
+  }
+
+  if (copied) {
+    setButtonTextTemporarily("Copied!");
+  } else {
+    setButtonTextTemporarily("Copy failed");
+  }
 }
 
 function showImportModal() {
