@@ -1158,7 +1158,16 @@ function loadPersistedGameState(){
     applyDealVariant(persistedVariantKey);
 
     const expectedFreeCells = getCurrentDealConfig().freeCells;
-    if(parsed.hand.length !== expectedFreeCells) return false;
+
+    // Adjust legacy or imported save's hand length to match the expected configuration
+    if(parsed.hand.length > expectedFreeCells) {
+       // If there are more slots than expected, we can only trim them if they are empty
+       const extraCards = parsed.hand.slice(expectedFreeCells).filter(c => c !== null);
+       if (extraCards.length > 0) return false; // Reject save if it would drop real cards
+       parsed.hand = parsed.hand.slice(0, expectedFreeCells);
+    } else while(parsed.hand.length < expectedFreeCells) {
+       parsed.hand.push(null);
+    }
 
     tableau = parsed.tableau;
     foundations = parsed.foundations;
@@ -1389,9 +1398,18 @@ function importSave() {
 
     localStorage.setItem(GAME_STATE_KEY, decoded);
     document.getElementById('modalImport').classList.remove('active');
+
     // Prevent syncTimerPresence from triggering on reload and immediately overwriting our newly imported state
     window.removeEventListener('blur', syncTimerPresence);
     document.removeEventListener('visibilitychange', syncTimerPresence);
+
+    // Completely disable any further persistence to protect the imported state
+    // during the page unload process triggered by location.reload().
+    window.persistGameState = () => {};
+    if (typeof timerInterval !== 'undefined' && timerInterval) {
+      clearInterval(timerInterval);
+    }
+
     alert("Save imported successfully! The game will now reload.");
     location.reload();
 
