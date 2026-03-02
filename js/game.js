@@ -11,7 +11,7 @@ const SAVE_PAYLOAD_VERSION = 1;
 const DEAL_VARIANT_KEY = "rs_dealVariant_v1";
 const DEFAULT_DEAL_VARIANT_KEY = "cells3";
 const MAX_STATS_HISTORY = 100000;
-const APP_VERSION = "v0.2.18";
+const APP_VERSION = "v0.3.0-js";
 
 const DEAL_VARIANTS = {
   cells0: {
