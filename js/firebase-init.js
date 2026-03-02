@@ -1,7 +1,3 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
-import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-analytics.js";
-import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
-
 const firebaseConfig = {
   apiKey: "AIzaSyA5HQn8iBuIqlyJro26AwzkPygMHGA47PA",
   authDomain: "russian-reserve.firebaseapp.com",
@@ -14,6 +10,10 @@ const firebaseConfig = {
 
 export async function initFirebaseStats() {
   try {
+    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js");
+    const { getAnalytics } = await import("https://www.gstatic.com/firebasejs/12.10.0/firebase-analytics.js");
+    const { getFirestore, collection, addDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js");
+
     const app = initializeApp(firebaseConfig);
     const analytics = getAnalytics(app);
     window.db = getFirestore(app);
@@ -32,6 +32,7 @@ export async function initFirebaseStats() {
     return { app, analytics };
   } catch (e) {
     console.warn("Firebase initialization failed. Global stats disabled.");
+    window.logGlobalStat = async function(statData) {};
     return null;
   }
 }
