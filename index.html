@@ -909,7 +909,7 @@ const STATS_HISTORY_KEY = "rs_statsHistory_v1";
 const DEAL_VARIANT_KEY = "rs_dealVariant_v1";
 const DEFAULT_DEAL_VARIANT_KEY = "cells3";
 const MAX_STATS_HISTORY = 100;
-const APP_VERSION = "v0.2.15";
+const APP_VERSION = "v0.2.16";
 
 const DEAL_VARIANTS = {
   cells0: {
@@ -1278,20 +1278,25 @@ function recordGameResult(outcome){
   gameFinished = true;
   runResultRecorded = true;
   const history = loadStatsHistory();
-  history.push({ outcome, moveCount, undoCount, elapsedMs, finishedAt: Date.now() });
+  history.push({ outcome, moveCount, undoCount, elapsedMs, finishedAt: Date.now(), variant: currentDealVariantKey });
   saveStatsHistory(history);
   persistGameState();
   renderStatsModal();
 
   // Attempt to log to global stats if Firebase is enabled
   if(typeof window.logGlobalStat === 'function') {
-    window.logGlobalStat({
-      outcome,
-      moveCount,
-      undoCount,
-      elapsedMs,
-      variant: currentDealVariantKey,
-      appVersion: APP_VERSION
+    const variantHistory = history.filter(g => g.variant === currentDealVariantKey || !g.variant); // fallback to include older pre-variant records
+    const computed = computeStats(variantHistory);
+      appVersion: APP_VERSION,
+      // Include the player's personal computed stats
+      playerStats: {
+        totalGames: computed.totalGames,
+        winRate: computed.winRate,
+        currentStreak: computed.currentStreak,
+        bestStreak: computed.bestStreak,
+        avgMovesOnWins: computed.avgMovesOnWins,
+        avgTimeOnWins: computed.avgTimeOnWins
+      }
     });
   }
 }
@@ -1378,6 +1383,9 @@ function importSave() {
 
     localStorage.setItem(GAME_STATE_KEY, decoded);
     document.getElementById('modalImport').classList.remove('active');
+    // Prevent syncTimerPresence from triggering on reload and immediately overwriting our newly imported state
+    window.removeEventListener('blur', syncTimerPresence);
+    document.removeEventListener('visibilitychange', syncTimerPresence);
     alert("Save imported successfully! The game will now reload.");
     location.reload();
 
