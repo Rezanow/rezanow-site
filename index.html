@@ -1287,6 +1287,12 @@ function recordGameResult(outcome){
   if(typeof window.logGlobalStat === 'function') {
     const variantHistory = history.filter(g => g.variant === currentDealVariantKey || !g.variant); // fallback to include older pre-variant records
     const computed = computeStats(variantHistory);
+    window.logGlobalStat({
+      outcome,
+      moveCount,
+      undoCount,
+      elapsedMs,
+      variant: currentDealVariantKey,
       appVersion: APP_VERSION,
       // Include the player's personal computed stats
       playerStats: {
