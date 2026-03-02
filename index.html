@@ -1287,12 +1287,6 @@ function recordGameResult(outcome){
   if(typeof window.logGlobalStat === 'function') {
     const variantHistory = history.filter(g => g.variant === currentDealVariantKey || !g.variant); // fallback to include older pre-variant records
     const computed = computeStats(variantHistory);
-    window.logGlobalStat({
-      outcome,
-      moveCount,
-      undoCount,
-      elapsedMs,
-      variant: currentDealVariantKey,
       appVersion: APP_VERSION,
       // Include the player's personal computed stats
       playerStats: {
@@ -1389,11 +1383,9 @@ function importSave() {
 
     localStorage.setItem(GAME_STATE_KEY, decoded);
     document.getElementById('modalImport').classList.remove('active');
-
     // Prevent syncTimerPresence from triggering on reload and immediately overwriting our newly imported state
     window.removeEventListener('blur', syncTimerPresence);
     document.removeEventListener('visibilitychange', syncTimerPresence);
-
     alert("Save imported successfully! The game will now reload.");
     location.reload();
 
