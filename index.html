@@ -1974,6 +1974,13 @@ function showHint(){
     return;
   }
 
+  const fallbackHintFound = findAnyMove(true, {
+    includeAllCellMoves: true,
+    allowNonPractical: true,
+  });
+
+  if(fallbackHintFound) return;
+
   announceHint('No practical moves found; try undo/new game.');
   alert('No practical moves found; try undo/new game.');
 }
@@ -2746,7 +2753,7 @@ function runHintRegressionScenario(){
 }
 
 
-function findAnyMove(highlight, { includeAllCellMoves=false } = {}){
+function findAnyMove(highlight, { includeAllCellMoves=false, allowNonPractical=false } = {}){
   const gameState = { tableau, hand, foundations };
   const branchClassification = classifyHintBranches({ includeAllCellMoves, state: gameState });
   const tier1Moves = branchClassification.progressBranches.map(branch => branch.move);
