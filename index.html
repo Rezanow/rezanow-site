@@ -2772,35 +2772,30 @@ function findAnyMove(highlight, { includeAllCellMoves=false } = {}){
 
   if(move.type === 'hand_to_foundation'){
     highlightHand(move.source.handIdx, 'source');
-    highlightFoundation(move.target.foundationIdx, 'target');
     announceMoveHint(move);
     return true;
   }
 
   if(move.type === 'hand_to_tableau'){
     highlightHand(move.source.handIdx, 'source');
-    highlightPile(move.target.pileIdx, 'target');
     announceMoveHint(move);
     return true;
   }
 
   if(move.type === 'pile_to_foundation'){
     highlightPileCard(move.source.pileIdx, move.source.cardIdx, 'source');
-    highlightFoundation(move.target.foundationIdx, 'target');
     announceMoveHint(move);
     return true;
   }
 
   if(move.type === 'pile_to_tableau'){
     highlightPileCard(move.source.pileIdx, move.source.cardIdx, 'source');
-    highlightPile(move.target.pileIdx, 'target');
     announceMoveHint(move);
     return true;
   }
 
   if(move.type === 'pile_to_hand'){
     highlightPileCard(move.source.pileIdx, move.source.cardIdx, 'source');
-    highlightHand(move.target.handIdx, 'target');
     announceMoveHint(move);
     return true;
   }
