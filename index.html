@@ -2755,19 +2755,24 @@ function runHintRegressionScenario(){
 
 function findAnyMove(highlight, { includeAllCellMoves=false, allowNonPractical=false } = {}){
   const gameState = { tableau, hand, foundations };
-  const moves = enumerateMoves({ includeCellShuffles: true, includeAllCellMoves });
   const branchClassification = classifyHintBranches({ includeAllCellMoves, state: gameState });
-  let candidateMoves = branchClassification.progressBranches.map(branch => branch.move);
+  const tier1Moves = branchClassification.progressBranches.map(branch => branch.move);
+  const legalMoves = enumerateMoves({ includeCellShuffles: true, includeAllCellMoves: true });
+  const tier2Moves = legalMoves.filter(move => {
+    if(isImmediateReverse(move, recentMoveContext, gameState)) return false;
+    if(isHintLoop(move, gameState)) return false;
+    return true;
+  });
+  const tier3Moves = legalMoves.filter(move => !isImmediateReverse(move, recentMoveContext, gameState));
+  const tier4Moves = legalMoves;
 
-  if(!candidateMoves.length && allowNonPractical){
-    const nonLoopMoves = moves.filter(move => !isImmediateReverse(move, recentMoveContext, gameState));
-    candidateMoves = nonLoopMoves.length ? nonLoopMoves : moves;
-  }
-
-  if(!candidateMoves.length && branchClassification.hitNodeCap){
-    const nonLoopMoves = moves.filter(move => !isImmediateReverse(move, recentMoveContext, gameState));
-    candidateMoves = nonLoopMoves.length ? nonLoopMoves : [];
-  }
+  const candidateMoves = tier1Moves.length
+    ? tier1Moves
+    : tier2Moves.length
+      ? tier2Moves
+      : tier3Moves.length
+        ? tier3Moves
+        : tier4Moves;
 
   const move = selectHintMove(candidateMoves, { gameState, recentMove: recentMoveContext, priorMove: priorMoveContext });
   if(!move) return false;
