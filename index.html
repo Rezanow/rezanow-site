@@ -910,7 +910,7 @@ const SAVE_PAYLOAD_VERSION = 1;
 const DEAL_VARIANT_KEY = "rs_dealVariant_v1";
 const DEFAULT_DEAL_VARIANT_KEY = "cells3";
 const MAX_STATS_HISTORY = 100000;
-const APP_VERSION = "v0.2.21";
+const APP_VERSION = "v0.2.22";
 
 const DEAL_VARIANTS = {
   cells0: {
@@ -1974,6 +1974,13 @@ function showHint(){
     return;
   }
 
+  const fallbackHintFound = findAnyMove(true, {
+    includeAllCellMoves: true,
+    allowNonPractical: true,
+  });
+
+  if(fallbackHintFound) return;
+
   announceHint('No practical moves found; try undo/new game.');
   alert('No practical moves found; try undo/new game.');
 }
@@ -2746,11 +2753,16 @@ function runHintRegressionScenario(){
 }
 
 
-function findAnyMove(highlight, { includeAllCellMoves=false } = {}){
+function findAnyMove(highlight, { includeAllCellMoves=false, allowNonPractical=false } = {}){
   const gameState = { tableau, hand, foundations };
   const moves = enumerateMoves({ includeCellShuffles: true, includeAllCellMoves });
   const branchClassification = classifyHintBranches({ includeAllCellMoves, state: gameState });
   let candidateMoves = branchClassification.progressBranches.map(branch => branch.move);
+
+  if(!candidateMoves.length && allowNonPractical){
+    const nonLoopMoves = moves.filter(move => !isImmediateReverse(move, recentMoveContext, gameState));
+    candidateMoves = nonLoopMoves.length ? nonLoopMoves : moves;
+  }
 
   if(!candidateMoves.length && branchClassification.hitNodeCap){
     const nonLoopMoves = moves.filter(move => !isImmediateReverse(move, recentMoveContext, gameState));
