@@ -12,3 +12,11 @@
   - ci: run Playwright e2e in GitHub Actions
   - fix(solitaire): prevent hint loop regression
   - chore: bump patch version
+
+## Versioning (required)
+- This repo displays a semantic version in `index.html` as `vMAJOR.MINOR.PATCH` (e.g., `v0.2.4`).
+- Any time you make a change that will be committed (any file change other than docs-only, unless requested), you MUST:
+  1) bump PATCH by +1 in `index.html` (e.g., `0.2.4 -> 0.2.5`)
+  2) include that change in the same PR/commit
+- If the task is *only* changing `index.html` version text already, don’t double-bump.
+- If you made zero file changes, do not bump.
