@@ -222,8 +222,29 @@
       cursor: default;
     }
 
-    .card.red { color: #ca3030; }
-    .card.black { color: #181818; }
+    .card.suit-spades {
+      background: linear-gradient(165deg, #0f213b 0%, #1e3c64 100%);
+      color: #f5f9ff;
+      border-color: #8db8ff;
+    }
+
+    .card.suit-clubs {
+      background: linear-gradient(165deg, #0d2f1e 0%, #1a5534 100%);
+      color: #effff5;
+      border-color: #89ddb0;
+    }
+
+    .card.suit-hearts {
+      background: linear-gradient(165deg, #fff4f5 0%, #ffd4dc 100%);
+      color: #8e0f24;
+      border-color: #e56f86;
+    }
+
+    .card.suit-diamonds {
+      background: linear-gradient(165deg, #f6fbff 0%, #d8f0ff 100%);
+      color: #005f8f;
+      border-color: #59add6;
+    }
 
     .card.selected {
       box-shadow: 0 0 0 3px var(--accent), var(--shadow);
@@ -560,13 +581,16 @@
       function tryAutoMoveFromTableau(colIndex, cardIndex) {
         const col = gameState.tableau[colIndex];
         const card = col?.[cardIndex];
-        if (!card || !card.faceUp || cardIndex !== col.length - 1) return false;
+        if (!card || !card.faceUp) return false;
+        const isTopCard = cardIndex === col.length - 1;
 
-        for (let foundationIndex = 0; foundationIndex < gameState.foundations.length; foundationIndex += 1) {
-          if (canMoveToFoundation(card, gameState.foundations[foundationIndex])) {
-            gameState = { ...gameState, selection: { type: "tableau", colIndex, cardIndex } };
-            tryMoveSelectionTo({ type: "foundation", foundationIndex });
-            return true;
+        if (isTopCard) {
+          for (let foundationIndex = 0; foundationIndex < gameState.foundations.length; foundationIndex += 1) {
+            if (canMoveToFoundation(card, gameState.foundations[foundationIndex])) {
+              gameState = { ...gameState, selection: { type: "tableau", colIndex, cardIndex } };
+              tryMoveSelectionTo({ type: "foundation", foundationIndex });
+              return true;
+            }
           }
         }
 
@@ -580,11 +604,13 @@
           }
         }
 
-        const emptyCellIndex = gameState.freeCells.findIndex((cell) => !cell);
-        if (emptyCellIndex >= 0) {
-          gameState = { ...gameState, selection: { type: "tableau", colIndex, cardIndex } };
-          tryMoveSelectionTo({ type: "freecell", cellIndex: emptyCellIndex });
-          return true;
+        if (isTopCard) {
+          const emptyCellIndex = gameState.freeCells.findIndex((cell) => !cell);
+          if (emptyCellIndex >= 0) {
+            gameState = { ...gameState, selection: { type: "tableau", colIndex, cardIndex } };
+            tryMoveSelectionTo({ type: "freecell", cellIndex: emptyCellIndex });
+            return true;
+          }
         }
 
         return false;
@@ -615,8 +641,8 @@
       }
 
       function getCardClass(card) {
-        const colorClass = (card.suit === "♥" || card.suit === "♦") ? "red" : "black";
-        return `card ${colorClass}`;
+        const suitClass = `suit-${suitNames[card.suit]}`;
+        return `card ${suitClass}`;
       }
 
       function render() {
@@ -655,7 +681,9 @@
             cardEl.style.setProperty("--y", "0px");
             cardEl.addEventListener("click", (e) => {
               e.stopPropagation();
-              setSelection({ type: "freecell", cellIndex: i });
+              if (!tryAutoMoveFromFreecell(i)) {
+                clearSelection("No automatic move available for that free cell card.", true);
+              }
             });
             slot.appendChild(cardEl);
           }
@@ -746,25 +774,9 @@
         const colIndex = Number(cardEl.dataset.col);
         const cardIndex = Number(cardEl.dataset.index);
 
-        if (!gameState.selection) {
-          if (tryAutoMoveFromTableau(colIndex, cardIndex)) return;
-          setSelection({ type: "tableau", colIndex, cardIndex });
-          return;
+        if (!tryAutoMoveFromTableau(colIndex, cardIndex)) {
+          clearSelection("No automatic move available for that card.", true);
         }
-
-        if (gameState.selection.type === "tableau"
-          && gameState.selection.colIndex === colIndex
-          && gameState.selection.cardIndex === cardIndex) {
-          clearSelection("Selection cleared.");
-          return;
-        }
-
-        if (gameState.selection.type !== "tableau" || gameState.selection.colIndex !== colIndex || gameState.selection.cardIndex !== cardIndex) {
-          setSelection({ type: "tableau", colIndex, cardIndex });
-          return;
-        }
-
-        tryMoveSelectionTo({ type: "tableau", colIndex });
       }
 
       function onColumnClick(event) {
@@ -777,27 +789,11 @@
 
       function onFreeCellClick(event) {
         const cellIndex = Number(event.currentTarget.dataset.index);
-
-        if (!gameState.selection) {
-          if (gameState.freeCells[cellIndex] && !tryAutoMoveFromFreecell(cellIndex)) {
-            setSelection({ type: "freecell", cellIndex });
-          }
-          return;
+        const hasCard = Boolean(gameState.freeCells[cellIndex]);
+        if (!hasCard) return;
+        if (!tryAutoMoveFromFreecell(cellIndex)) {
+          clearSelection("No automatic move available for that free cell card.", true);
         }
-
-        if (gameState.selection.type === "freecell" && gameState.selection.cellIndex === cellIndex) {
-          clearSelection("Selection cleared.");
-          return;
-        }
-
-        if (gameState.selection.type !== "freecell" || gameState.selection.cellIndex !== cellIndex) {
-          if (gameState.freeCells[cellIndex]) {
-            setSelection({ type: "freecell", cellIndex });
-          }
-          return;
-        }
-
-        tryMoveSelectionTo({ type: "freecell", cellIndex });
       }
 
       function onFoundationClick(event) {
