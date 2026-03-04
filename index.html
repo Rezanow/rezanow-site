@@ -920,7 +920,7 @@ const SAVE_PAYLOAD_VERSION = 1;
 const DEAL_VARIANT_KEY = "rs_dealVariant_v1";
 const DEFAULT_DEAL_VARIANT_KEY = "cells3";
 const MAX_STATS_HISTORY = 100000;
-const APP_VERSION = "v0.2.31";
+const APP_VERSION = "v0.2.32";
 
 const DEAL_VARIANTS = {
   cells0: {
@@ -2765,6 +2765,14 @@ function getMoveSourceKey(move){
 }
 
 function highlightLegalMoves(moves){
+  const moveTypesBySource = new Map();
+  for(const move of moves){
+    const sourceKey = getMoveSourceKey(move);
+    if(!sourceKey) continue;
+    if(!moveTypesBySource.has(sourceKey)) moveTypesBySource.set(sourceKey, new Set());
+    moveTypesBySource.get(sourceKey).add(move.type);
+  }
+
   const seenSources = new Set();
   for(const move of moves){
     const sourceKey = getMoveSourceKey(move);
@@ -2774,6 +2782,12 @@ function highlightLegalMoves(moves){
     if(move.type === 'hand_to_foundation' || move.type === 'hand_to_tableau'){
       highlightHand(move.source.handIdx, 'legal');
       continue;
+    }
+
+    if(move.type === 'pile_to_hand'){
+      const sourceMoveTypes = moveTypesBySource.get(sourceKey);
+      const hasNonCellDestination = sourceMoveTypes && Array.from(sourceMoveTypes).some(type => type !== 'pile_to_hand');
+      if(!hasNonCellDestination) continue;
     }
 
     if(move.type === 'pile_to_foundation' || move.type === 'pile_to_tableau' || move.type === 'pile_to_hand'){
