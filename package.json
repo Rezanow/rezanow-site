@@ -5,6 +5,7 @@
   "main": "test-export-import.js",
   "dependencies": {
     "corepack": "^0.34.6",
+    "jsdom": "^28.1.0",
     "npm": "^11.9.0"
   },
   "devDependencies": {
