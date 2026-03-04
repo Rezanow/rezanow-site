@@ -226,12 +226,11 @@
         border-color: #d32f2f;
       }
     }
-    .hint-source {
+    .hint-legal {
       border: 3px solid #d32f2f !important;
       outline: 3px dashed #ffeb3b;
       outline-offset: 2px;
       animation: hint-pulse 1.1s infinite;
-      z-index: 1000 !important;
     }
     .hint-target { border: 2px solid #ec407a; background: rgba(236, 64, 122, 0.2); }
 
@@ -248,7 +247,7 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .hint-source {
+      .hint-legal {
         animation: none;
       }
     }
@@ -921,7 +920,7 @@ const SAVE_PAYLOAD_VERSION = 1;
 const DEAL_VARIANT_KEY = "rs_dealVariant_v1";
 const DEFAULT_DEAL_VARIANT_KEY = "cells3";
 const MAX_STATS_HISTORY = 100000;
-const APP_VERSION = "v0.2.30";
+const APP_VERSION = "v0.2.31";
 
 const DEAL_VARIANTS = {
   cells0: {
@@ -1805,8 +1804,8 @@ function autoPlay(){
 }
 
 function clearHints(){
-  document.querySelectorAll('.hint-source, .hint-target').forEach(el => {
-    el.classList.remove('hint-source'); el.classList.remove('hint-target');
+  document.querySelectorAll('.hint-legal, .hint-target').forEach(el => {
+    el.classList.remove('hint-legal'); el.classList.remove('hint-target');
   });
 }
 
@@ -1954,21 +1953,19 @@ function classifyHintBranches({ includeAllCellMoves=false, depthLimit=4, nodeCap
 
 function showHint(){
   clearHints();
-  const moveState = getMoveAvailabilityState();
+  const legalMoves = enumerateMoves({
+    includeCellShuffles: true,
+    includeAllCellMoves: true
+  });
 
-  if(moveState.hasPracticalMoves){
-    findAnyMove(true);
-    return;
-  }
-
-  if(!moveState.hasLegalMoves){
+  if(!legalMoves.length){
     announceHint('No legal moves available.');
     alert('No legal moves available.');
     return;
   }
 
-  announceHint('No practical moves remain. Try undo or start a new game.');
-  alert('No practical moves remain. Try undo or start a new game.');
+  highlightLegalMoves(legalMoves);
+  announceHint(`Showing ${legalMoves.length} legal move${legalMoves.length === 1 ? '' : 's'}.`);
 }
 
 function canFinalizeLoss(){
@@ -2001,16 +1998,6 @@ function checkGameState(){
         message: 'No legal moves remain.'
       });
       document.getElementById('modalLose').classList.add('active');
-      return;
-    }
-
-    if(!moveState.hasPracticalMoves){
-      announceHint('No practical moves remain. Try undo or start a new game.');
-      setLoseModalContent({
-        title: 'No Practical Moves',
-        message: 'Only loop moves remain. Undo or start a new game.'
-      });
-      document.getElementById('modalLose').classList.add('active');
     }
   }
 }
@@ -2023,22 +2010,11 @@ function getMoveAvailabilityState({ state=null } = {}){
     state: gameState
   });
 
-  const branchClassification = classifyHintBranches({
-    includeAllCellMoves: false,
-    state: gameState
-  });
-  const { progressBranches, hitNodeCap } = branchClassification;
-  const practicalMoves = progressBranches.map(branch => branch.move);
-  const fallbackPracticalMoves = !practicalMoves.length && hitNodeCap
-    ? legalMoves.filter(move => !isImmediateReverse(move, recentMoveContext, gameState) && !isHintLoop(move, gameState))
-    : [];
-  const hasPracticalMoves = practicalMoves.length > 0 || fallbackPracticalMoves.length > 0;
-
   return {
     hasLegalMoves: legalMoves.length > 0,
-    hasPracticalMoves,
+    hasPracticalMoves: legalMoves.length > 0,
     legalMoves,
-    practicalMoves
+    practicalMoves: legalMoves
   };
 }
 
@@ -2624,7 +2600,7 @@ function runHintRegressionScenario(){
     highlightPileCard = () => {};
     announceMoveHint = () => {};
 
-    hasFindAnyMoveHint = findAnyMove(true);
+    hasFindAnyMoveHint = enumerateMoves({ includeCellShuffles: true, includeAllCellMoves: true }).length > 0;
   } finally {
     tableau = previousTableau;
     hand = previousHand;
@@ -2638,7 +2614,7 @@ function runHintRegressionScenario(){
 
   console.assert(hasUnlockingCellMove, 'Single-card pile should be considered for free-cell unlock moves.');
   console.assert(hasFollowupProgressMove, 'Free-cell unlock should expose a follow-up king-to-empty-tableau move.');
-  console.assert(hasFindAnyMoveHint, 'findAnyMove(true) should return a hint for the unlock chain scenario.');
+  console.assert(hasFindAnyMoveHint, 'Legal move enumeration should find at least one move for the unlock chain scenario.');
   console.assert(hasHintCandidate, 'Hint selection should not report "No suggestions found" for the unlock chain scenario.');
 
   const twoKingDecisionState = {
@@ -2740,7 +2716,7 @@ function runHintRegressionScenario(){
   priorMoveContext = previousCellShufflePriorMoveContext;
 
   console.assert(cellShuffleMoveState.hasLegalMoves, 'Cell shuffle cycle should still report legal moves.');
-  console.assert(!cellShuffleMoveState.hasPracticalMoves, 'Cell shuffle cycle should report no practical progress moves.');
+  console.assert(cellShuffleMoveState.hasPracticalMoves, 'Cell shuffle cycle should still be treated as legal-move-available.');
 
   const previousDeadEndTableau = tableau;
   const previousDeadEndHand = hand;
@@ -2760,10 +2736,10 @@ function runHintRegressionScenario(){
     priorMoveContext = null;
 
     const deadEndMoveState = getMoveAvailabilityState();
-    deadEndDetectedAsPracticalDeadEnd = deadEndMoveState.hasLegalMoves && !deadEndMoveState.hasPracticalMoves;
+    deadEndDetectedAsPracticalDeadEnd = deadEndMoveState.hasLegalMoves && deadEndMoveState.hasPracticalMoves;
 
-    deadEndDefaultHintFound = findAnyMove(false);
-    deadEndOptInHintFound = findAnyMove(false, { includeAllCellMoves: true, allowNonPractical: true });
+    deadEndDefaultHintFound = enumerateMoves({ includeCellShuffles: true, includeAllCellMoves: true }).length > 0;
+    deadEndOptInHintFound = deadEndDefaultHintFound;
   } finally {
     tableau = previousDeadEndTableau;
     hand = previousDeadEndHand;
@@ -2772,80 +2748,38 @@ function runHintRegressionScenario(){
     priorMoveContext = previousDeadEndPriorMoveContext;
   }
 
-  console.assert(deadEndDetectedAsPracticalDeadEnd, 'Dead-end state should be reported as legal but not practical by move availability checks.');
-  console.assert(!deadEndDefaultHintFound, 'Dead-end state should not produce a default practical hint suggestion.');
-  console.assert(deadEndOptInHintFound, 'Dead-end state should only expose loop hints through explicit non-practical opt-in.');
+  console.assert(deadEndDetectedAsPracticalDeadEnd, 'Dead-end state should be reported as legal-move-available.');
+  console.assert(deadEndDefaultHintFound, 'Dead-end state should still expose legal moves to the hint system.');
+  console.assert(deadEndOptInHintFound, 'Dead-end state legal moves should remain available in hint mode.');
 }
 
 
-function findAnyMove(highlight, { includeAllCellMoves=false, allowNonPractical=false } = {}){
-  const gameState = { tableau, hand, foundations };
-  const branchClassification = classifyHintBranches({ includeAllCellMoves, state: gameState });
-  const tier1Moves = branchClassification.progressBranches.map(branch => branch.move);
-  const legalMoves = enumerateMoves({ includeCellShuffles: true, includeAllCellMoves: true });
-  const tier2Moves = legalMoves.filter(move => {
-    if(isImmediateReverse(move, recentMoveContext, gameState)) return false;
-    if(isHintLoop(move, gameState)) return false;
-    return true;
-  });
-  const tier3Moves = legalMoves.filter(move => !isImmediateReverse(move, recentMoveContext, gameState));
-  const tier4Moves = legalMoves;
-
-  const candidateMoves = allowNonPractical
-    ? tier1Moves.length
-      ? tier1Moves
-      : tier2Moves.length
-        ? tier2Moves
-        : tier3Moves.length
-          ? tier3Moves
-          : tier4Moves
-    : tier1Moves;
-
-  const move = selectHintMove(candidateMoves, { gameState, recentMove: recentMoveContext, priorMove: priorMoveContext });
-  if(!move) return false;
-  if(!highlight) return true;
-
-  // Record the state resulting from this hint to avoid loops
-  const simulatedState = applyMoveToState(gameState, move);
-  if (simulatedState) {
-    const stateKey = buildCompactStateKey(simulatedState.nextState);
-    hintHistory.push(stateKey);
-    // Keep the history manageable
-    if (hintHistory.length > 10) hintHistory.shift();
+function getMoveSourceKey(move){
+  if(move.type === 'hand_to_foundation' || move.type === 'hand_to_tableau'){
+    return `hand:${move.source.handIdx}`;
   }
-
-  if(move.type === 'hand_to_foundation'){
-    highlightHand(move.source.handIdx, 'source');
-    announceMoveHint(move);
-    return true;
+  if(move.type === 'pile_to_foundation' || move.type === 'pile_to_tableau' || move.type === 'pile_to_hand'){
+    return `pile:${move.source.pileIdx}:${move.source.cardIdx}`;
   }
+  return null;
+}
 
-  if(move.type === 'hand_to_tableau'){
-    highlightHand(move.source.handIdx, 'source');
-    announceMoveHint(move);
-    return true;
+function highlightLegalMoves(moves){
+  const seenSources = new Set();
+  for(const move of moves){
+    const sourceKey = getMoveSourceKey(move);
+    if(!sourceKey || seenSources.has(sourceKey)) continue;
+    seenSources.add(sourceKey);
+
+    if(move.type === 'hand_to_foundation' || move.type === 'hand_to_tableau'){
+      highlightHand(move.source.handIdx, 'legal');
+      continue;
+    }
+
+    if(move.type === 'pile_to_foundation' || move.type === 'pile_to_tableau' || move.type === 'pile_to_hand'){
+      highlightPileCard(move.source.pileIdx, move.source.cardIdx, 'legal');
+    }
   }
-
-  if(move.type === 'pile_to_foundation'){
-    highlightPileCard(move.source.pileIdx, move.source.cardIdx, 'source');
-    announceMoveHint(move);
-    return true;
-  }
-
-  if(move.type === 'pile_to_tableau'){
-    highlightPileCard(move.source.pileIdx, move.source.cardIdx, 'source');
-    announceMoveHint(move);
-    return true;
-  }
-
-  if(move.type === 'pile_to_hand'){
-    highlightPileCard(move.source.pileIdx, move.source.cardIdx, 'source');
-    announceMoveHint(move);
-    return true;
-  }
-
-  announceMoveHint(move);
-  return true;
 }
 
 function isWin(){
