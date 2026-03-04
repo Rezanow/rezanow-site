@@ -910,7 +910,7 @@ const SAVE_PAYLOAD_VERSION = 1;
 const DEAL_VARIANT_KEY = "rs_dealVariant_v1";
 const DEFAULT_DEAL_VARIANT_KEY = "cells3";
 const MAX_STATS_HISTORY = 100000;
-const APP_VERSION = "v0.2.26";
+const APP_VERSION = "v0.2.27";
 
 const DEAL_VARIANTS = {
   cells0: {
@@ -3033,6 +3033,13 @@ function commitMove(targetType, targetIdx){
         save(); moveCount++; foundations[targetIdx].push(c);
         if(dragSource.type==='pile'){ tableau[dragSource.idx].pop(); flipTop(dragSource.idx); }
         else hand[dragSource.idx]=null;
+        recordRecentMove(
+          dragSource.type === 'pile' ? 'pile_to_foundation' : 'hand_to_foundation',
+          dragSource.type === 'pile' ? { pileIdx: dragSource.idx, cardIdx: dragSource.cardIdx } : { handIdx: dragSource.idx },
+          { foundationIdx: targetIdx },
+          c
+        );
+        hintHistory = []; // Reset hint history on successful move
         persistGameState();
         success = true;
      }
@@ -3056,6 +3063,13 @@ function cardClick(type, idx, cardIdx){
          save(); moveCount++; foundations[idx].push(c);
          if(selected.type==='pile'){ tableau[selected.idx].pop(); flipTop(selected.idx); }
          else hand[selected.idx]=null;
+         recordRecentMove(
+           selected.type === 'pile' ? 'pile_to_foundation' : 'hand_to_foundation',
+           selected.type === 'pile' ? { pileIdx: selected.idx, cardIdx: selected.cardIdx } : { handIdx: selected.idx },
+           { foundationIdx: idx },
+           c
+         );
+         hintHistory = []; // Reset hint history on successful move
          persistGameState();
          success=true;
        }
