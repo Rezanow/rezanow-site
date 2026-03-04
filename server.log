@@ -1,27 +1,36 @@
-node:events:497
-      throw er; // Unhandled 'error' event
-      ^
+npm warn exec The following package was not found and will be installed: http-server@14.1.1
+npm warn deprecated whatwg-encoding@2.0.0: Use @exodus/bytes instead for a more spec-conformant and faster implementation
+Starting up http-server, serving .
 
-Error: listen EADDRINUSE: address already in use 0.0.0.0:8080
-    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
-    at listenInCluster (node:net:1997:12)
-    at node:net:2206:7
-    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
-Emitted 'error' event on Server instance at:
-    at emitErrorNT (node:net:1976:8)
-    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
-  code: 'EADDRINUSE',
-  errno: -98,
-  syscall: 'listen',
-  address: '0.0.0.0',
-  [2026-03-04T16:35:13.069Z]  "GET /Alaska.html" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
-(node:5108) [DEP0066] DeprecationWarning: OutgoingMessage.prototype._headers is deprecated
+http-server version: 14.1.1
+
+http-server settings:
+CORS: disabled
+Cache: 3600 seconds
+Connection Timeout: 120 seconds
+Directory Listings: visible
+AutoIndex: visible
+Serve GZIP Files: false
+Serve Brotli Files: false
+Default File Extension: none
+
+Available on:
+  http://127.0.0.1:8080
+  http://192.168.0.2:8080
+Hit CTRL-C to stop the server
+
+[2026-03-04T20:31:10.931Z]  "GET /Alaska.html" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+(node:3302) [DEP0066] DeprecationWarning: OutgoingMessage.prototype._headers is deprecated
 (Use `node --trace-deprecation ...` to show where the warning was created)
-[2026-03-04T16:35:24.064Z]  "GET /Alaska.html" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
-[2026-03-04T16:36:36.833Z]  "GET /Alaska.html" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
-[2026-03-04T16:38:39.282Z]  "GET /Alaska.html" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
-[2026-03-04T16:42:39.311Z]  "GET /Alaska.html" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
-[2026-03-04T16:45:30.819Z]  "GET /Alaska.html" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
-[2026-03-04T16:45:58.710Z]  "GET /Alaska.html" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
-[2026-03-04T16:56:11.153Z]  "GET /Alaska.html" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
-[2026-03-04T16:56:23.651Z]  "GET /Alaska.html" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36"
+[2026-03-04T20:31:40.151Z]  "GET /double_russian_reserve.html" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36"
+[2026-03-04T20:32:24.628Z]  "GET /double_russian_reserve.html" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36"
+[2026-03-04T20:32:48.132Z]  "GET /double_russian_reserve.html" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36"
+[2026-03-04T20:33:32.743Z]  "GET /double_russian_reserve.html" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36"
+[2026-03-04T20:33:54.972Z]  "GET /double_russian_reserve.html" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36"
+[2026-03-04T20:34:14.932Z]  "GET /double_russian_reserve.html?debug=0" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36"
+[2026-03-04T20:35:51.869Z]  "GET /double_russian_reserve.html?debug=0" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36"
+[2026-03-04T20:36:25.689Z]  "GET /double_russian_reserve.html?debug=0" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36"
+[2026-03-04T20:37:46.637Z]  "GET /double_russian_reserve.html?debug=0" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36"
+[2026-03-04T20:38:07.995Z]  "GET /double_russian_reserve.html?debug=0" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36"
+[2026-03-04T20:38:30.054Z]  "GET /double_russian_reserve.html?debug=0" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36"
+[2026-03-04T20:39:06.518Z]  "GET /double_russian_reserve.html" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/143.0.7499.4 Safari/537.36"
