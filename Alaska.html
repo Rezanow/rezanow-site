@@ -153,6 +153,35 @@
             font-size: 16px;
             cursor: pointer;
         }
+          
+        /* Settings Dropdown */
+        .settings-group {
+            background-color: #2a2a2a;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .settings-title {
+            font-size: 14px;
+            color: #aaa;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .setting-label {
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+            margin-bottom: 8px;
+            cursor: pointer;
+        }
+
+        .setting-label input {
+            margin-right: 10px;
+            cursor: pointer;
+        }
 
         /* Overlay for menu */
         .menu-overlay {
@@ -239,6 +268,39 @@
             border: 2px solid white;
         }
 
+        .card.red { color: var(--color-red, #d40000); }
+        .card.black { color: var(--color-black, #000000); }
+        .card.green { color: var(--color-green, #000000); }
+        .card.blue { color: var(--color-blue, #d40000); }
+
+        /* Card Visual Modes */
+
+        /* 1. High Contrast Glyphs (Text/Symbols) */
+        body.theme-hc-glyphs {
+            --color-black: #000000; /* Spades */
+            --color-red: #d40000;   /* Hearts */
+            --color-green: #008000; /* Clubs */
+            --color-blue: #0000ff;  /* Diamonds */
+        }
+
+        /* 2. Full Color Backgrounds (Traditional red/black text, colored background) */
+        body.theme-color-bg .card.red { background-color: #ffeaea; }
+        body.theme-color-bg .card.black { background-color: #eaeaea; }
+        body.theme-color-bg .card.blue { background-color: #ffeaea; } /* Diamonds are traditionally red */
+        body.theme-color-bg .card.green { background-color: #eaeaea; } /* Clubs are traditionally black */
+
+        /* 3. High Contrast Backgrounds (High contrast text/symbols + matched colored background) */
+        body.theme-hc-bg {
+            --color-black: #000000;
+            --color-red: #d40000;
+            --color-green: #008000;
+            --color-blue: #0000ff;
+        }
+        body.theme-hc-bg .card.spades { background-color: #eaeaea; }
+        body.theme-hc-bg .card.hearts { background-color: #ffeaea; }
+        body.theme-hc-bg .card.clubs { background-color: #eaffea; }
+        body.theme-hc-bg .card.diamonds { background-color: #eaeaef; }
+
         .card.red { color: #d40000; }
         .card.black { color: #000000; }
 
@@ -278,6 +340,25 @@
             pointer-events: none; /* Let events pass through to drop targets */
         }
 
+        /* Legal Move Hint Style - Inset border using box-shadow so it doesn't leak out
+           and respecting stacked elements */
+        .card.hint-legal-move::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            box-shadow: inset 0 0 0 4px #ffeb3b;
+            border-radius: calc(var(--border-radius) - 1px);
+            pointer-events: none; /* Let clicks pass through */
+            z-index: 2; /* Just above card content, but below the next card */
+            animation: pulse-inset 1.5s infinite alternate;
+        }
+
+        @keyframes pulse-inset {
+            from { box-shadow: inset 0 0 0 3px rgba(255, 235, 59, 0.5); }
+            to { box-shadow: inset 0 0 0 5px rgba(255, 235, 59, 1); }
         .card.hint-highlight {
             box-shadow: 0 0 15px 5px #ffeb3b;
             animation: pulse 1s infinite alternate;
@@ -379,6 +460,26 @@
         <button class="menu-item" id="btnRestart">Restart Current</button>
         <button class="menu-item" id="btnStats">Statistics</button>
         <button class="menu-item" id="btnRules">Rules</button>
+
+        <div class="settings-group">
+            <div class="settings-title">Visual Settings</div>
+            <label class="setting-label">
+                <input type="radio" name="visualTheme" value="default" checked>
+                Default
+            </label>
+            <label class="setting-label">
+                <input type="radio" name="visualTheme" value="theme-hc-glyphs">
+                High Contrast Glyphs
+            </label>
+            <label class="setting-label">
+                <input type="radio" name="visualTheme" value="theme-color-bg">
+                Color Backgrounds
+            </label>
+            <label class="setting-label">
+                <input type="radio" name="visualTheme" value="theme-hc-bg">
+                High Contrast BG
+            </label>
+        </div>
     </div>
 
     <div class="game-area" id="gameArea">
@@ -802,6 +903,9 @@
         const sourceObj = JSON.parse(sourceStr);
         const cardId = cardEl.getAttribute('data-id');
 
+        // Clear any hints
+        if (typeof clearHints === 'function') clearHints();
+
         // Check if card is movable
         let isMovable = false;
         let movingStack = [];
@@ -975,6 +1079,29 @@
     }
 
 
+    // --- Theme Settings ---
+    const THEME_KEY = 'alaska_solitaire_theme';
+
+    function loadTheme() {
+        const theme = localStorage.getItem(THEME_KEY) || 'default';
+        applyTheme(theme);
+
+        // Update radio buttons
+        const radios = document.querySelectorAll('input[name="visualTheme"]');
+        radios.forEach(radio => {
+            radio.checked = (radio.value === theme);
+        });
+    }
+
+    function applyTheme(theme) {
+        document.body.classList.remove('theme-hc-glyphs', 'theme-color-bg', 'theme-hc-bg');
+        if (theme !== 'default') {
+            document.body.classList.add(theme);
+        }
+        localStorage.setItem(THEME_KEY, theme);
+    }
+
+
     // --- Render Logic ---
     function getCardHTML(card, sourceObj, zIndex) {
         if (!card) return '';
@@ -984,6 +1111,14 @@
             return `<div class="card face-down" data-id="${card.id}" data-source="${sourceStr}" style="z-index: ${zIndex};"></div>`;
         }
 
+        // Apply suit-specific classes for high contrast targeting
+        let colorClass = '';
+        let suitSymbol = '';
+        switch(card.suit) {
+            case 'spades': suitSymbol = '♠'; colorClass = 'black spades'; break;
+            case 'hearts': suitSymbol = '♥'; colorClass = 'red hearts'; break;
+            case 'clubs': suitSymbol = '♣'; colorClass = 'green clubs'; break;
+            case 'diamonds': suitSymbol = '♦'; colorClass = 'blue diamonds'; break;
         const colorClass = (card.suit === 'hearts' || card.suit === 'diamonds') ? 'red' : 'black';
         let suitSymbol = '';
         switch(card.suit) {
@@ -1092,6 +1227,13 @@
             document.getElementById('rulesModalOverlay').classList.add('open');
         });
 
+        // Theme listeners
+        document.querySelectorAll('input[name="visualTheme"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                applyTheme(e.target.value);
+            });
+        });
+
         // Modals Close
         document.querySelectorAll('.modal-close').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -1106,10 +1248,17 @@
     }
 
     // --- Hint Feature ---
+    function clearHints() {
+        document.querySelectorAll('.hint-legal-move').forEach(el => el.classList.remove('hint-legal-move'));
+    }
+
     function giveHint() {
         if (currentState.status !== 'playing') return;
 
         // Clear existing highlights
+        clearHints();
+
+        // Check all face-up cards in tableau
         document.querySelectorAll('.hint-highlight').forEach(el => el.classList.remove('hint-highlight'));
 
         let validMoves = [];
@@ -1121,6 +1270,63 @@
                 const card = pile[i];
                 if (!card.faceUp) continue;
 
+                let hasValidMove = false;
+                const stackSize = pile.length - i;
+
+                // 1. Try Foundation
+                if (stackSize === 1 && canMoveToFoundation(card, card.suit)) {
+                    hasValidMove = true;
+                }
+
+                // 2. Try Tableau
+                if (!hasValidMove) {
+                    for (let tc = 0; tc < 7; tc++) {
+                        if (tc === col) continue;
+                        const tPile = currentState.tableau[tc];
+                        const topCard = tPile.length > 0 ? tPile[tPile.length - 1] : null;
+                        if (canMoveToTableau(card, topCard)) {
+                            // Avoid meaningless King moves (moving King from an empty column to another empty column)
+                            if (card.rank === 'K' && i === 0 && !topCard) continue;
+                            hasValidMove = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (hasValidMove) {
+                    const el = document.querySelector(`.card[data-id="${card.id}"]`);
+                    if (el) el.classList.add('hint-legal-move');
+                }
+            }
+        }
+
+        // Check cards in Cells
+        for (let i = 0; i < 3; i++) {
+            const card = currentState.cells[i];
+            if (!card) continue;
+
+            let hasValidMove = false;
+
+            // 1. Try Foundation
+            if (canMoveToFoundation(card, card.suit)) {
+                hasValidMove = true;
+            }
+
+            // 2. Try Tableau
+            if (!hasValidMove) {
+                for (let tc = 0; tc < 7; tc++) {
+                    const tPile = currentState.tableau[tc];
+                    const topCard = tPile.length > 0 ? tPile[tPile.length - 1] : null;
+                    if (canMoveToTableau(card, topCard)) {
+                        hasValidMove = true;
+                        break;
+                    }
+                }
+            }
+
+            if (hasValidMove) {
+                const el = document.querySelector(`.card[data-id="${card.id}"]`);
+                if (el) el.classList.add('hint-legal-move');
                 const stackSize = pile.length - i;
                 const sourceObj = { type: 'tableau', col: col, index: i };
 
@@ -1280,6 +1486,7 @@
     // Initialize first game when DOM is loaded
     document.addEventListener('DOMContentLoaded', () => {
         setupEventListeners();
+        loadTheme();
 
         // Add Hint Listener
         document.getElementById('btnHint').addEventListener('click', giveHint);
