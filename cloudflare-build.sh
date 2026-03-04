@@ -8,11 +8,12 @@ APP_VERSION="${BASE_TAG}-dev+${SHORT_SHA}"
 rm -rf build
 mkdir -p build
 
-# Copy the full repo content to build/ while skipping deployment-irrelevant dirs.
-rsync -a ./ build/ \
-  --exclude '.git' \
-  --exclude 'node_modules' \
-  --exclude 'build'
+# Copy full repo content to build/ using portable tar (rsync is not always available).
+tar -cf - \
+  --exclude='./.git' \
+  --exclude='./node_modules' \
+  --exclude='./build' \
+  . | tar -xf - -C build
 
 # Replace version token in common web text assets across the whole site.
 find build -type f \( \
