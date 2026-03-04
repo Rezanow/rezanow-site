@@ -354,13 +354,13 @@
         return {
           tableau,
           foundations: Array.from({ length: 4 }, () => []),
-          freeCells: [null, null, null],
-          hand: [],
+          freeCells: [deck.pop() || null, deck.pop() || null, deck.pop() || null],
           moveCount: 0,
           history: [],
           selection: null,
           won: false,
-          message: ""
+          message: "",
+          messageType: ""
         };
       }
 
@@ -401,9 +401,18 @@
         const next = deepCloneState(gameState);
         next.selection = null;
         next.message = "";
+        next.messageType = "";
 
-        const moved = mutator(next);
-        if (!moved) return;
+        const result = mutator(next);
+        if (!result || !result.ok) {
+          gameState = {
+            ...gameState,
+            message: result?.reason || "That move is not allowed.",
+            messageType: "error"
+          };
+          render();
+          return;
+        }
 
         next.history = [...gameState.history, previous];
         next.moveCount += 1;
@@ -440,6 +449,14 @@
         return top.suit === card.suit && card.rank === top.rank + 1;
       }
 
+      function isValidTableauStack(stack) {
+        if (!stack || stack.length === 0) return false;
+        for (let i = 0; i < stack.length - 1; i += 1) {
+          if (!canBuildOnTableau(stack[i + 1], stack[i])) return false;
+        }
+        return true;
+      }
+
       function extractTableauStack(state, colIndex, cardIndex) {
         const col = state.tableau[colIndex];
         if (!col || cardIndex < 0 || cardIndex >= col.length) return null;
@@ -459,79 +476,142 @@
         commitMove((next) => {
           if (sel.type === "tableau") {
             const stack = extractTableauStack(next, sel.colIndex, sel.cardIndex);
-            if (!stack || stack.length === 0) return false;
+            if (!stack || stack.length === 0) return { ok: false, reason: "Select a face-up card." };
+            if (!isValidTableauStack(stack)) return { ok: false, reason: "That stack is not in a legal suit sequence." };
 
             if (target.type === "tableau") {
-              if (target.colIndex === sel.colIndex) return false;
+              if (target.colIndex === sel.colIndex) return { ok: false, reason: "Pick a different tableau column." };
               const targetCol = next.tableau[target.colIndex];
               const targetTop = targetCol[targetCol.length - 1] || null;
-              if (!canBuildOnTableau(stack[0], targetTop)) return false;
+              if (!canBuildOnTableau(stack[0], targetTop)) return { ok: false, reason: "That tableau move is not allowed." };
               removeTableauStack(next, sel.colIndex, sel.cardIndex);
               targetCol.push(...stack);
               next.message = "Moved stack to tableau.";
-              return true;
+              next.messageType = "";
+              return { ok: true };
             }
 
             if (target.type === "freecell") {
-              if (stack.length !== 1) return false;
+              if (stack.length !== 1) return { ok: false, reason: "Only one card can go to a free cell." };
               const srcCol = next.tableau[sel.colIndex];
-              if (sel.cardIndex !== srcCol.length - 1) return false;
-              if (next.freeCells[target.cellIndex]) return false;
+              if (sel.cardIndex !== srcCol.length - 1) return { ok: false, reason: "Only the top card can go to a free cell." };
+              if (next.freeCells[target.cellIndex]) return { ok: false, reason: "That free cell is occupied." };
               removeTableauStack(next, sel.colIndex, sel.cardIndex);
               next.freeCells[target.cellIndex] = stack[0];
               next.message = "Moved card to free cell.";
-              return true;
+              next.messageType = "";
+              return { ok: true };
             }
 
             if (target.type === "foundation") {
-              if (stack.length !== 1) return false;
+              if (stack.length !== 1) return { ok: false, reason: "Only one card can go to foundation." };
               const srcCol = next.tableau[sel.colIndex];
-              if (sel.cardIndex !== srcCol.length - 1) return false;
+              if (sel.cardIndex !== srcCol.length - 1) return { ok: false, reason: "Only the top card can go to foundation." };
               const pile = next.foundations[target.foundationIndex];
-              if (!canMoveToFoundation(stack[0], pile)) return false;
+              if (!canMoveToFoundation(stack[0], pile)) return { ok: false, reason: "That card cannot go to that foundation." };
               removeTableauStack(next, sel.colIndex, sel.cardIndex);
               pile.push(stack[0]);
               next.message = "Added card to foundation.";
-              return true;
+              next.messageType = "";
+              return { ok: true };
             }
           }
 
           if (sel.type === "freecell") {
             const card = next.freeCells[sel.cellIndex];
-            if (!card) return false;
+            if (!card) return { ok: false, reason: "That free cell is empty." };
 
             if (target.type === "tableau") {
               const targetCol = next.tableau[target.colIndex];
               const targetTop = targetCol[targetCol.length - 1] || null;
-              if (!canBuildOnTableau(card, targetTop)) return false;
+              if (!canBuildOnTableau(card, targetTop)) return { ok: false, reason: "That tableau move is not allowed." };
               next.freeCells[sel.cellIndex] = null;
               targetCol.push(card);
               next.message = "Moved free cell card to tableau.";
-              return true;
+              next.messageType = "";
+              return { ok: true };
             }
 
             if (target.type === "foundation") {
               const pile = next.foundations[target.foundationIndex];
-              if (!canMoveToFoundation(card, pile)) return false;
+              if (!canMoveToFoundation(card, pile)) return { ok: false, reason: "That card cannot go to that foundation." };
               next.freeCells[sel.cellIndex] = null;
               pile.push(card);
               next.message = "Moved free cell card to foundation.";
-              return true;
+              next.messageType = "";
+              return { ok: true };
             }
           }
 
-          return false;
+          return { ok: false, reason: "That move is not allowed." };
         });
       }
 
       function setSelection(selection) {
-        gameState = { ...gameState, selection, message: "" };
+        gameState = { ...gameState, selection, message: "", messageType: "" };
         render();
       }
 
       function clearSelection(msg, isError = false) {
         gameState = { ...gameState, selection: null, message: msg || "", messageType: isError ? "error" : "" };
         render();
+      }
+
+      function tryAutoMoveFromTableau(colIndex, cardIndex) {
+        const col = gameState.tableau[colIndex];
+        const card = col?.[cardIndex];
+        if (!card || !card.faceUp || cardIndex !== col.length - 1) return false;
+
+        for (let foundationIndex = 0; foundationIndex < gameState.foundations.length; foundationIndex += 1) {
+          if (canMoveToFoundation(card, gameState.foundations[foundationIndex])) {
+            gameState = { ...gameState, selection: { type: "tableau", colIndex, cardIndex } };
+            tryMoveSelectionTo({ type: "foundation", foundationIndex });
+            return true;
+          }
+        }
+
+        for (let targetCol = 0; targetCol < gameState.tableau.length; targetCol += 1) {
+          if (targetCol === colIndex) continue;
+          const targetTop = gameState.tableau[targetCol][gameState.tableau[targetCol].length - 1] || null;
+          if (canBuildOnTableau(card, targetTop)) {
+            gameState = { ...gameState, selection: { type: "tableau", colIndex, cardIndex } };
+            tryMoveSelectionTo({ type: "tableau", colIndex: targetCol });
+            return true;
+          }
+        }
+
+        const emptyCellIndex = gameState.freeCells.findIndex((cell) => !cell);
+        if (emptyCellIndex >= 0) {
+          gameState = { ...gameState, selection: { type: "tableau", colIndex, cardIndex } };
+          tryMoveSelectionTo({ type: "freecell", cellIndex: emptyCellIndex });
+          return true;
+        }
+
+        return false;
+      }
+
+      function tryAutoMoveFromFreecell(cellIndex) {
+        const card = gameState.freeCells[cellIndex];
+        if (!card) return false;
+
+        for (let foundationIndex = 0; foundationIndex < gameState.foundations.length; foundationIndex += 1) {
+          if (canMoveToFoundation(card, gameState.foundations[foundationIndex])) {
+            gameState = { ...gameState, selection: { type: "freecell", cellIndex } };
+            tryMoveSelectionTo({ type: "foundation", foundationIndex });
+            return true;
+          }
+        }
+
+        for (let targetCol = 0; targetCol < gameState.tableau.length; targetCol += 1) {
+          const targetTop = gameState.tableau[targetCol][gameState.tableau[targetCol].length - 1] || null;
+          if (canBuildOnTableau(card, targetTop)) {
+            gameState = { ...gameState, selection: { type: "freecell", cellIndex } };
+            tryMoveSelectionTo({ type: "tableau", colIndex: targetCol });
+            return true;
+          }
+        }
+
+        return false;
       }
 
       function getCardClass(card) {
@@ -550,6 +630,7 @@
 
         els.message.textContent = gameState.message || "";
         els.message.className = "message";
+        if (gameState.messageType) els.message.classList.add(gameState.messageType);
         if (gameState.won) els.message.classList.add("success");
       }
 
@@ -666,6 +747,19 @@
         const cardIndex = Number(cardEl.dataset.index);
 
         if (!gameState.selection) {
+          if (tryAutoMoveFromTableau(colIndex, cardIndex)) return;
+          setSelection({ type: "tableau", colIndex, cardIndex });
+          return;
+        }
+
+        if (gameState.selection.type === "tableau"
+          && gameState.selection.colIndex === colIndex
+          && gameState.selection.cardIndex === cardIndex) {
+          clearSelection("Selection cleared.");
+          return;
+        }
+
+        if (gameState.selection.type !== "tableau" || gameState.selection.colIndex !== colIndex || gameState.selection.cardIndex !== cardIndex) {
           setSelection({ type: "tableau", colIndex, cardIndex });
           return;
         }
@@ -685,7 +779,21 @@
         const cellIndex = Number(event.currentTarget.dataset.index);
 
         if (!gameState.selection) {
-          if (gameState.freeCells[cellIndex]) setSelection({ type: "freecell", cellIndex });
+          if (gameState.freeCells[cellIndex] && !tryAutoMoveFromFreecell(cellIndex)) {
+            setSelection({ type: "freecell", cellIndex });
+          }
+          return;
+        }
+
+        if (gameState.selection.type === "freecell" && gameState.selection.cellIndex === cellIndex) {
+          clearSelection("Selection cleared.");
+          return;
+        }
+
+        if (gameState.selection.type !== "freecell" || gameState.selection.cellIndex !== cellIndex) {
+          if (gameState.freeCells[cellIndex]) {
+            setSelection({ type: "freecell", cellIndex });
+          }
           return;
         }
 
@@ -786,7 +894,7 @@
       els.undoBtn.addEventListener("click", undo);
       els.hintBtn.addEventListener("click", () => {
         const hint = findHint(gameState);
-        gameState = { ...gameState, message: `Hint: ${describeMove(hint)}` };
+        gameState = { ...gameState, message: `Hint: ${describeMove(hint)}`, messageType: "" };
         render();
       });
       els.newGameBtn.addEventListener("click", newGame);
