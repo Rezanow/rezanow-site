@@ -76,18 +76,24 @@
       font-size: 18px;
       line-height: 1;
     }
-    button {
+    button, .header-link-btn {
       border: none; border-radius: 4px; padding: 6px 12px; 
       font-weight: 600; font-size: 12px; cursor: pointer;
       background: #e0e0e0; color: #333; box-shadow: 0 2px 2px rgba(0,0,0,0.2);
+      text-decoration: none;
+      font-family: inherit;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
-    button:active { transform: translateY(1px); }
+    button:active, .header-link-btn:active { transform: translateY(1px); }
     button#autoBtn { background: #ffda2b; color: #000; }
     button#hintBtn { background: #e1bee7; color: #4a148c; }
     button#giveUpBtn { background: #ef9a9a; color: #b71c1c; }
 
     #menuToggle:focus-visible,
     .controls button:focus-visible,
+    .controls .header-link-btn:focus-visible,
     .quick-controls button:focus-visible,
     .controls select:focus-visible,
     .controls input:focus-visible {
@@ -614,7 +620,8 @@ header .controls > *{ flex: 0 0 auto; }
   }
   header .controls{ flex: 1 1 100%; }
   header .controls button,
-  header .controls select{
+  header .controls select,
+  header .controls .header-link-btn{
     height: 28px;
     font-size: 12px;
     padding: 0 8px;
@@ -709,8 +716,8 @@ header .controls > *{ flex: 0 0 auto; }
         <option value="cells4">4</option>
       </select>
 
+      <a href="https://rezanow.com/double_russian_reserve" target="_blank" rel="noopener noreferrer" class="header-link-btn">Double Russian Reserve</a>
 
-      
       <button id="rulesBtn" title="View rules">Rules</button>
       <button id="statsBtn" title="View stats">Stats</button>
       <button id="exportBtn" onclick="exportSave()">Export Save</button>
