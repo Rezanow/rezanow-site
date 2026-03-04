@@ -910,7 +910,7 @@ const SAVE_PAYLOAD_VERSION = 1;
 const DEAL_VARIANT_KEY = "rs_dealVariant_v1";
 const DEFAULT_DEAL_VARIANT_KEY = "cells3";
 const MAX_STATS_HISTORY = 100000;
-const APP_VERSION = "v0.2.24";
+const APP_VERSION = "v0.2.25";
 
 const DEAL_VARIANTS = {
   cells0: {
@@ -1956,15 +1956,8 @@ function showHint(){
     return;
   }
 
-  const fallbackHintFound = findAnyMove(true, {
-    includeAllCellMoves: true,
-    allowNonPractical: true,
-  });
-
-  if(fallbackHintFound) return;
-
-  announceHint('No practical moves found; try undo/new game.');
-  alert('No practical moves found; try undo/new game.');
+  announceHint('No practical moves remain. Try undo or start a new game.');
+  alert('No practical moves remain. Try undo or start a new game.');
 }
 
 function canFinalizeLoss(){
@@ -2002,6 +1995,11 @@ function checkGameState(){
 
     if(!moveState.hasPracticalMoves){
       announceHint('No practical moves remain. Try undo or start a new game.');
+      setLoseModalContent({
+        title: 'No Practical Moves',
+        message: 'Only loop moves remain. Undo or start a new game.'
+      });
+      document.getElementById('modalLose').classList.add('active');
     }
   }
 }
@@ -2732,6 +2730,40 @@ function runHintRegressionScenario(){
 
   console.assert(cellShuffleMoveState.hasLegalMoves, 'Cell shuffle cycle should still report legal moves.');
   console.assert(!cellShuffleMoveState.hasPracticalMoves, 'Cell shuffle cycle should report no practical progress moves.');
+
+  const previousDeadEndTableau = tableau;
+  const previousDeadEndHand = hand;
+  const previousDeadEndFoundations = foundations;
+  const previousDeadEndRecentMoveContext = recentMoveContext;
+  const previousDeadEndPriorMoveContext = priorMoveContext;
+
+  let deadEndDefaultHintFound = true;
+  let deadEndOptInHintFound = false;
+  let deadEndDetectedAsPracticalDeadEnd = false;
+
+  try {
+    tableau = cellShuffleCycleState.tableau.map(pile => pile.map(card => ({ ...card })));
+    hand = [...cellShuffleCycleState.hand];
+    foundations = cellShuffleCycleState.foundations.map(pile => pile.map(card => ({ ...card })));
+    recentMoveContext = cellShuffleCycleRecentMove;
+    priorMoveContext = null;
+
+    const deadEndMoveState = getMoveAvailabilityState();
+    deadEndDetectedAsPracticalDeadEnd = deadEndMoveState.hasLegalMoves && !deadEndMoveState.hasPracticalMoves;
+
+    deadEndDefaultHintFound = findAnyMove(false);
+    deadEndOptInHintFound = findAnyMove(false, { includeAllCellMoves: true, allowNonPractical: true });
+  } finally {
+    tableau = previousDeadEndTableau;
+    hand = previousDeadEndHand;
+    foundations = previousDeadEndFoundations;
+    recentMoveContext = previousDeadEndRecentMoveContext;
+    priorMoveContext = previousDeadEndPriorMoveContext;
+  }
+
+  console.assert(deadEndDetectedAsPracticalDeadEnd, 'Dead-end state should be reported as legal but not practical by move availability checks.');
+  console.assert(!deadEndDefaultHintFound, 'Dead-end state should not produce a default practical hint suggestion.');
+  console.assert(deadEndOptInHintFound, 'Dead-end state should only expose loop hints through explicit non-practical opt-in.');
 }
 
 
@@ -2748,13 +2780,15 @@ function findAnyMove(highlight, { includeAllCellMoves=false, allowNonPractical=f
   const tier3Moves = legalMoves.filter(move => !isImmediateReverse(move, recentMoveContext, gameState));
   const tier4Moves = legalMoves;
 
-  const candidateMoves = tier1Moves.length
-    ? tier1Moves
-    : tier2Moves.length
-      ? tier2Moves
-      : tier3Moves.length
-        ? tier3Moves
-        : tier4Moves;
+  const candidateMoves = allowNonPractical
+    ? tier1Moves.length
+      ? tier1Moves
+      : tier2Moves.length
+        ? tier2Moves
+        : tier3Moves.length
+          ? tier3Moves
+          : tier4Moves
+    : tier1Moves;
 
   const move = selectHintMove(candidateMoves, { gameState, recentMove: recentMoveContext, priorMove: priorMoveContext });
   if(!move) return false;
