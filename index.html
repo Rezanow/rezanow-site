@@ -910,7 +910,7 @@ const SAVE_PAYLOAD_VERSION = 1;
 const DEAL_VARIANT_KEY = "rs_dealVariant_v1";
 const DEFAULT_DEAL_VARIANT_KEY = "cells3";
 const MAX_STATS_HISTORY = 100000;
-const APP_VERSION = "v0.2.27";
+const APP_VERSION = "v0.2.28";
 
 const DEAL_VARIANTS = {
   cells0: {
@@ -3122,10 +3122,6 @@ function createCardEl(c, type, idx, cardIdx){
   el.onclick = (e) => {
     if(Date.now() - lastTouchEndTs < TOUCH_CLICK_GUARD_MS) return;
     e.stopPropagation();
-    if(Date.now() - lastTouchEndTs < TOUCH_CLICK_GUARD_MS){
-      e.preventDefault();
-      return;
-    }
     clearHints();
     if(tryAutoMoveFromTap(type, idx, cardIdx)){
       selected = null;
