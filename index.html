@@ -66,6 +66,7 @@
     header h1 { margin: 0; font-weight: 700; font-size: 16px; letter-spacing: 0.5px;}
 
     .controls { display:flex; gap:8px; }
+    .quick-controls { display:flex; gap:8px; }
     #menuToggle {
       display: none;
       background: #e0e0e0;
@@ -87,6 +88,7 @@
 
     #menuToggle:focus-visible,
     .controls button:focus-visible,
+    .quick-controls button:focus-visible,
     .controls select:focus-visible,
     .controls input:focus-visible {
       outline: 3px solid #ffda2b;
@@ -547,6 +549,12 @@ header .header-main{
   align-items: center;
   gap: 8px;
 }
+header .quick-controls{
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
 header .controls{
   display: flex;
   flex-wrap: wrap;
@@ -575,10 +583,11 @@ header .controls > *{ flex: 0 0 auto; }
   }
   header .header-main{
     width: 100%;
-    justify-content: space-between;
+    justify-content: flex-start;
   }
   header h1{ font-size: 14px; margin-right: 6px; }
   #menuToggle{ display: inline-flex; align-items: center; justify-content: center; }
+  header .quick-controls{ margin-left: auto; }
 
   header .controls{
     flex: 1 1 100%;
@@ -668,10 +677,13 @@ header .controls > *{ flex: 0 0 auto; }
   <header>
     <div class="header-main">
       <h1>Russian Reserve</h1>
+      <div class="quick-controls">
+        <button id="hintBtn" onclick="showHint()">Hint</button>
+        <button id="undoBtn">Undo</button>
+      </div>
       <button id="menuToggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="headerControls">☰</button>
     </div>
     <div class="controls" id="headerControls">
-      <button id="hintBtn" onclick="showHint()">Hint</button>
       <span id="hintAnnouncement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></span>
       
       <label class="suit-style-label" for="suitStyleSelect">Suit Style:</label>
@@ -706,7 +718,6 @@ header .controls > *{ flex: 0 0 auto; }
       <button id="importBtn" onclick="showImportModal()">Import Save</button>
       <button id="autoBtn">Auto</button>
       <button id="giveUpBtn">Give Up</button>
-      <button id="undoBtn">Undo</button>
     </div>
   </header>
 
@@ -910,7 +921,7 @@ const SAVE_PAYLOAD_VERSION = 1;
 const DEAL_VARIANT_KEY = "rs_dealVariant_v1";
 const DEFAULT_DEAL_VARIANT_KEY = "cells3";
 const MAX_STATS_HISTORY = 100000;
-const APP_VERSION = "v0.2.29";
+const APP_VERSION = "v0.2.30";
 
 const DEAL_VARIANTS = {
   cells0: {
