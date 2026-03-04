@@ -428,11 +428,12 @@
         if (!result || !result.ok) {
           gameState = {
             ...gameState,
+            selection: null,
             message: result?.reason || "That move is not allowed.",
             messageType: "error"
           };
           render();
-          return;
+          return false;
         }
 
         next.history = [...gameState.history, previous];
@@ -443,6 +444,7 @@
 
         gameState = next;
         render();
+        return true;
       }
 
       function checkAndFlip(state) {
@@ -490,11 +492,11 @@
         col.splice(cardIndex);
       }
 
-      function tryMoveSelectionTo(target) {
-        const sel = gameState.selection;
-        if (!sel) return;
+      function tryMoveSelectionTo(target, selectionOverride = null) {
+        const sel = selectionOverride || gameState.selection;
+        if (!sel) return false;
 
-        commitMove((next) => {
+        return commitMove((next) => {
           if (sel.type === "tableau") {
             const stack = extractTableauStack(next, sel.colIndex, sel.cardIndex);
             if (!stack || stack.length === 0) return { ok: false, reason: "Select a face-up card." };
@@ -568,11 +570,6 @@
         });
       }
 
-      function setSelection(selection) {
-        gameState = { ...gameState, selection, message: "", messageType: "" };
-        render();
-      }
-
       function clearSelection(msg, isError = false) {
         gameState = { ...gameState, selection: null, message: msg || "", messageType: isError ? "error" : "" };
         render();
@@ -587,9 +584,7 @@
         if (isTopCard) {
           for (let foundationIndex = 0; foundationIndex < gameState.foundations.length; foundationIndex += 1) {
             if (canMoveToFoundation(card, gameState.foundations[foundationIndex])) {
-              gameState = { ...gameState, selection: { type: "tableau", colIndex, cardIndex } };
-              tryMoveSelectionTo({ type: "foundation", foundationIndex });
-              return true;
+              if (tryMoveSelectionTo({ type: "foundation", foundationIndex }, { type: "tableau", colIndex, cardIndex })) return true;
             }
           }
         }
@@ -598,18 +593,14 @@
           if (targetCol === colIndex) continue;
           const targetTop = gameState.tableau[targetCol][gameState.tableau[targetCol].length - 1] || null;
           if (canBuildOnTableau(card, targetTop)) {
-            gameState = { ...gameState, selection: { type: "tableau", colIndex, cardIndex } };
-            tryMoveSelectionTo({ type: "tableau", colIndex: targetCol });
-            return true;
+            if (tryMoveSelectionTo({ type: "tableau", colIndex: targetCol }, { type: "tableau", colIndex, cardIndex })) return true;
           }
         }
 
         if (isTopCard) {
           const emptyCellIndex = gameState.freeCells.findIndex((cell) => !cell);
           if (emptyCellIndex >= 0) {
-            gameState = { ...gameState, selection: { type: "tableau", colIndex, cardIndex } };
-            tryMoveSelectionTo({ type: "freecell", cellIndex: emptyCellIndex });
-            return true;
+            if (tryMoveSelectionTo({ type: "freecell", cellIndex: emptyCellIndex }, { type: "tableau", colIndex, cardIndex })) return true;
           }
         }
 
@@ -622,18 +613,14 @@
 
         for (let foundationIndex = 0; foundationIndex < gameState.foundations.length; foundationIndex += 1) {
           if (canMoveToFoundation(card, gameState.foundations[foundationIndex])) {
-            gameState = { ...gameState, selection: { type: "freecell", cellIndex } };
-            tryMoveSelectionTo({ type: "foundation", foundationIndex });
-            return true;
+            if (tryMoveSelectionTo({ type: "foundation", foundationIndex }, { type: "freecell", cellIndex })) return true;
           }
         }
 
         for (let targetCol = 0; targetCol < gameState.tableau.length; targetCol += 1) {
           const targetTop = gameState.tableau[targetCol][gameState.tableau[targetCol].length - 1] || null;
           if (canBuildOnTableau(card, targetTop)) {
-            gameState = { ...gameState, selection: { type: "freecell", cellIndex } };
-            tryMoveSelectionTo({ type: "tableau", colIndex: targetCol });
-            return true;
+            if (tryMoveSelectionTo({ type: "tableau", colIndex: targetCol }, { type: "freecell", cellIndex })) return true;
           }
         }
 
@@ -697,7 +684,6 @@
           slot.dataset.type = "foundation";
           slot.dataset.index = String(i);
           slot.textContent = pile.length ? "" : "Foundation";
-          slot.addEventListener("click", onFoundationClick);
 
           if (gameState.selection) slot.classList.add("highlight");
 
@@ -719,7 +705,6 @@
           const colEl = document.createElement("div");
           colEl.className = "column";
           colEl.dataset.col = String(cIdx);
-          colEl.addEventListener("click", onColumnClick);
 
           if (gameState.selection && gameState.selection.type !== "foundation") colEl.classList.add("highlight");
 
@@ -779,14 +764,6 @@
         }
       }
 
-      function onColumnClick(event) {
-        const colEl = event.currentTarget;
-        const colIndex = Number(colEl.dataset.col);
-        if (!gameState.selection) return;
-        if (event.target !== colEl) return;
-        tryMoveSelectionTo({ type: "tableau", colIndex });
-      }
-
       function onFreeCellClick(event) {
         const cellIndex = Number(event.currentTarget.dataset.index);
         const hasCard = Boolean(gameState.freeCells[cellIndex]);
@@ -794,12 +771,6 @@
         if (!tryAutoMoveFromFreecell(cellIndex)) {
           clearSelection("No automatic move available for that free cell card.", true);
         }
-      }
-
-      function onFoundationClick(event) {
-        const foundationIndex = Number(event.currentTarget.dataset.index);
-        if (!gameState.selection) return;
-        tryMoveSelectionTo({ type: "foundation", foundationIndex });
       }
 
       function undo() {
