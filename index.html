@@ -927,7 +927,7 @@ const SAVE_PAYLOAD_VERSION = 1;
 const DEAL_VARIANT_KEY = "rs_dealVariant_v1";
 const DEFAULT_DEAL_VARIANT_KEY = "cells3";
 const MAX_STATS_HISTORY = 100000;
-const APP_VERSION = "v0.2.36";
+const APP_VERSION = "v0.2.37";
 
 const DEAL_VARIANTS = {
   cells0: {
@@ -1352,7 +1352,7 @@ function isValidStatsRecord(record){
 
 function sanitizeStatsHistory(statsHistory){
   if(!Array.isArray(statsHistory)) return [];
-  return statsHistory.every(isValidStatsRecord) ? statsHistory : [];
+  return statsHistory.filter(isValidStatsRecord);
 }
 
 function recordGameResult(outcome){
