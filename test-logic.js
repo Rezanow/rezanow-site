@@ -2,7 +2,7 @@ const fs = require('fs');
 const jsdom = require("jsdom");
 const { JSDOM } = jsdom;
 const html = fs.readFileSync('./Alaska.html', 'utf-8');
-const dom = new JSDOM(html, { runScripts: "dangerously" });
+const dom = new JSDOM(html, { runScripts: "dangerously", url: "http://localhost:8080" });
 const window = dom.window;
 
 setTimeout(() => {

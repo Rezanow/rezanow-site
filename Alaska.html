@@ -359,6 +359,8 @@
         @keyframes pulse-inset {
             from { box-shadow: inset 0 0 0 3px rgba(255, 235, 59, 0.5); }
             to { box-shadow: inset 0 0 0 5px rgba(255, 235, 59, 1); }
+        }
+
         .card.hint-highlight {
             box-shadow: 0 0 15px 5px #ffeb3b;
             animation: pulse 1s infinite alternate;
@@ -1119,13 +1121,6 @@
             case 'hearts': suitSymbol = '♥'; colorClass = 'red hearts'; break;
             case 'clubs': suitSymbol = '♣'; colorClass = 'green clubs'; break;
             case 'diamonds': suitSymbol = '♦'; colorClass = 'blue diamonds'; break;
-        const colorClass = (card.suit === 'hearts' || card.suit === 'diamonds') ? 'red' : 'black';
-        let suitSymbol = '';
-        switch(card.suit) {
-            case 'spades': suitSymbol = '♠'; break;
-            case 'hearts': suitSymbol = '♥'; break;
-            case 'clubs': suitSymbol = '♣'; break;
-            case 'diamonds': suitSymbol = '♦'; break;
         }
 
         return `
@@ -1296,62 +1291,32 @@
                 if (hasValidMove) {
                     const el = document.querySelector(`.card[data-id="${card.id}"]`);
                     if (el) el.classList.add('hint-legal-move');
-                }
-            }
-        }
 
-        // Check cards in Cells
-        for (let i = 0; i < 3; i++) {
-            const card = currentState.cells[i];
-            if (!card) continue;
+                    const sourceObj = { type: 'tableau', col: col, index: i };
 
-            let hasValidMove = false;
-
-            // 1. Try Foundation
-            if (canMoveToFoundation(card, card.suit)) {
-                hasValidMove = true;
-            }
-
-            // 2. Try Tableau
-            if (!hasValidMove) {
-                for (let tc = 0; tc < 7; tc++) {
-                    const tPile = currentState.tableau[tc];
-                    const topCard = tPile.length > 0 ? tPile[tPile.length - 1] : null;
-                    if (canMoveToTableau(card, topCard)) {
-                        hasValidMove = true;
-                        break;
+                    // Try Foundation
+                    if (stackSize === 1 && canMoveToFoundation(card, card.suit)) {
+                        validMoves.push({ cardId: card.id, target: { type: 'foundation', suit: card.suit }, priority: 1 });
                     }
-                }
-            }
 
-            if (hasValidMove) {
-                const el = document.querySelector(`.card[data-id="${card.id}"]`);
-                if (el) el.classList.add('hint-legal-move');
-                const stackSize = pile.length - i;
-                const sourceObj = { type: 'tableau', col: col, index: i };
-
-                // Try Foundation
-                if (stackSize === 1 && canMoveToFoundation(card, card.suit)) {
-                    validMoves.push({ cardId: card.id, target: { type: 'foundation', suit: card.suit }, priority: 1 });
-                }
-
-                // Try Tableau
-                for (let tc = 0; tc < 7; tc++) {
-                    if (tc === col) continue;
-                    const tPile = currentState.tableau[tc];
-                    const topCard = tPile.length > 0 ? tPile[tPile.length - 1] : null;
-                    if (canMoveToTableau(card, topCard)) {
-                        // Avoid meaningless King moves (moving King from an empty column to another empty column)
-                        if (card.rank === 'K' && i === 0 && !topCard) continue;
-                        validMoves.push({ cardId: card.id, target: { type: 'tableau', col: tc }, priority: 2 });
+                    // Try Tableau
+                    for (let tc = 0; tc < 7; tc++) {
+                        if (tc === col) continue;
+                        const tPile = currentState.tableau[tc];
+                        const topCard = tPile.length > 0 ? tPile[tPile.length - 1] : null;
+                        if (canMoveToTableau(card, topCard)) {
+                            // Avoid meaningless King moves (moving King from an empty column to another empty column)
+                            if (card.rank === 'K' && i === 0 && !topCard) continue;
+                            validMoves.push({ cardId: card.id, target: { type: 'tableau', col: tc }, priority: 2 });
+                        }
                     }
-                }
 
-                // Try Cell (only if useful, let's keep it simple for now and only suggest if no other move)
-                if (stackSize === 1) {
-                    const emptyCellIndex = currentState.cells.findIndex(c => c === null);
-                    if (emptyCellIndex !== -1) {
-                         validMoves.push({ cardId: card.id, target: { type: 'cell', index: emptyCellIndex }, priority: 3 });
+                    // Try Cell (only if useful, let's keep it simple for now and only suggest if no other move)
+                    if (stackSize === 1) {
+                        const emptyCellIndex = currentState.cells.findIndex(c => c === null);
+                        if (emptyCellIndex !== -1) {
+                             validMoves.push({ cardId: card.id, target: { type: 'cell', index: emptyCellIndex }, priority: 3 });
+                        }
                     }
                 }
             }
@@ -1363,7 +1328,10 @@
             if (!card) continue;
             const sourceObj = { type: 'cell', index: i };
 
+            let hasValidMove = false;
+
             if (canMoveToFoundation(card, card.suit)) {
+                hasValidMove = true;
                 validMoves.push({ cardId: card.id, target: { type: 'foundation', suit: card.suit }, priority: 1 });
             }
 
@@ -1371,8 +1339,14 @@
                 const tPile = currentState.tableau[tc];
                 const topCard = tPile.length > 0 ? tPile[tPile.length - 1] : null;
                 if (canMoveToTableau(card, topCard)) {
+                    hasValidMove = true;
                     validMoves.push({ cardId: card.id, target: { type: 'tableau', col: tc }, priority: 2 });
                 }
+            }
+
+            if (hasValidMove) {
+                const el = document.querySelector(`.card[data-id="${card.id}"]`);
+                if (el) el.classList.add('hint-legal-move');
             }
         }
 
