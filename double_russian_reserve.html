@@ -922,7 +922,7 @@ const STATS_HISTORY_KEY = "drr_statsHistory_v1";
 const SAVE_PAYLOAD_VERSION = 1;
 const DEAL_VARIANT_KEY = "drr_dealVariant_v1";
 const MAX_STATS_HISTORY = 100000;
-const APP_VERSION = "v0.1.0";
+const APP_VERSION = "v0.1.1";
 
 const DEAL_CONFIG = {
   freeCells: 6,
@@ -1227,7 +1227,7 @@ function recordRecentMove(type, source, target, card){
 function loadStatsHistory(){
   try {
     const parsed = JSON.parse(localStorage.getItem(STATS_HISTORY_KEY) || '[]');
-    return Array.isArray(parsed) ? parsed : [];
+    return sanitizeStatsHistory(Array.isArray(parsed) ? parsed : []);
   } catch(e){
     return [];
   }
@@ -1252,7 +1252,7 @@ function isValidStatsRecord(record){
 
 function sanitizeStatsHistory(statsHistory){
   if(!Array.isArray(statsHistory)) return [];
-  return statsHistory.every(isValidStatsRecord) ? statsHistory : [];
+  return statsHistory.filter(isValidStatsRecord);
 }
 
 function recordGameResult(outcome){
@@ -1261,7 +1261,7 @@ function recordGameResult(outcome){
   gameFinished = true;
   runResultRecorded = true;
   const history = loadStatsHistory();
-  history.push({ outcome, moveCount, undoCount, elapsedMs, finishedAt: Date.now() });
+  history.push({ outcome, moveCount, undoCount, elapsedMs, finishedAt: Date.now(), variant: 'default' });
   saveStatsHistory(history);
   persistGameState();
   renderStatsModal();
