@@ -61,7 +61,10 @@
       flex-shrink: 0; 
       display:flex; justify-content:space-between; align-items:center; 
       padding: calc(6px + var(--safe-top)) calc(12px + var(--safe-right)) 6px calc(12px + var(--safe-left));
-      background: rgba(0,0,0,0.25);
+      background: rgba(0,0,0,0.8);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
 }
     header h1 { margin: 0; font-weight: 700; font-size: 16px; letter-spacing: 0.5px;}
 
@@ -538,7 +541,7 @@
 
     @media (prefers-color-scheme: dark){
       body{ background: #184b2d; }
-      header{ background: rgba(0,0,0,0.4); }
+      header{ background: rgba(0,0,0,0.8); }
       .run-stats{ background: rgba(0,0,0,0.35); }
       .modal-box{ background: #f4f4f4; }
     }
