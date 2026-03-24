@@ -680,6 +680,8 @@ header .controls > *{ flex: 0 0 auto; }
     <div class="header-main">
       <h1>Double Russian Reserve</h1>
       <div class="quick-controls">
+        <button id="zoomOutBtn" onclick="zoomOut()" title="Zoom Out" style="padding: 6px 8px; font-size: 14px; font-family: monospace;">-</button>
+        <button id="zoomInBtn" onclick="zoomIn()" title="Zoom In" style="padding: 6px 8px; font-size: 14px; font-family: monospace;">+</button>
         <button id="hintBtn" onclick="showHint()">Hint</button>
         <button id="undoBtn">Undo</button>
       </div>
@@ -922,10 +924,11 @@ const suitClass = { "♠":"spades", "♥":"hearts", "♦":"diamonds", "♣":"clu
 const SUIT_STYLE_KEY = "drr_suitStyle_v1";
 const GAME_STATE_KEY = "drr_gameState_v1";
 const STATS_HISTORY_KEY = "drr_statsHistory_v1";
+const ZOOM_LEVEL_KEY = "drr_zoomLevel_v1";
 const SAVE_PAYLOAD_VERSION = 1;
 const DEAL_VARIANT_KEY = "drr_dealVariant_v1";
 const MAX_STATS_HISTORY = 100000;
-const APP_VERSION = "v0.1.1";
+const APP_VERSION = "v0.1.2";
 
 const DEAL_CONFIG = {
   freeCells: 6,
@@ -1009,6 +1012,42 @@ let runResultRecorded=false;
 let recentMoveContext = null;
 let priorMoveContext = null;
 let hintHistory = [];
+
+let zoomLevel = 1.0;
+
+function loadZoomLevel() {
+  try {
+    const saved = localStorage.getItem(ZOOM_LEVEL_KEY);
+    if (saved) {
+      const parsed = parseFloat(saved);
+      if (Number.isFinite(parsed) && parsed >= 0.5 && parsed <= 2.5) {
+        zoomLevel = parsed;
+      }
+    }
+  } catch (e) {}
+}
+
+function saveZoomLevel() {
+  try {
+    localStorage.setItem(ZOOM_LEVEL_KEY, zoomLevel.toString());
+  } catch (e) {}
+}
+
+function zoomIn() {
+  if (zoomLevel < 2.5) {
+    zoomLevel += 0.1;
+    saveZoomLevel();
+    scheduleFit();
+  }
+}
+
+function zoomOut() {
+  if (zoomLevel > 0.5) {
+    zoomLevel -= 0.1;
+    saveZoomLevel();
+    scheduleFit();
+  }
+}
 
 let cachedVisitedKeys = null;
 let cachedVisitedKeysState = { moveCount: -1, undoCount: -1 };
@@ -3110,18 +3149,18 @@ function fit(){
   const s = Math.min(1, sW);
 
   // Clamp for usability (phone → desktop). Set a min-width to avoid unplayably tiny cards
-  const w = Math.round(Math.min(120, Math.max(46, baseW * s)));
+  const w = Math.round(Math.min(160, Math.max(34, baseW * s * zoomLevel)));
   const h = Math.round(w * 1.45);
-  let g = Math.round(Math.min(36, Math.max(14, baseGap * s)));
+  let g = Math.round(Math.min(60, Math.max(14, baseGap * s * zoomLevel)));
   // Extra vertical separation on narrow screens so ranks/suits remain readable.
   if (window.innerWidth <= 520) {
-    g = Math.round(Math.min(44, Math.max(18, baseGap * s * 1.25)));
+    g = Math.round(Math.min(68, Math.max(18, baseGap * s * zoomLevel * 1.25)));
   }
   // Big Corner Glyphs need additional overlap clearance.
   if(document.body.classList.contains('suit-style-corners') || document.body.classList.contains('suit-style-cb-corners')){
-    g = Math.round(Math.min(52, g * 1.35));
+    g = Math.round(Math.min(80, g * 1.35));
   }
-  const cg = Math.round(Math.min(12, Math.max(2, baseColGap * s)));
+  const cg = Math.round(Math.min(16, Math.max(2, baseColGap * s * zoomLevel)));
 
   document.documentElement.style.setProperty('--card-w', w + "px");
   document.documentElement.style.setProperty('--card-h', h + "px");
@@ -3176,6 +3215,8 @@ if(isDebugMode){
   console.info('[debug] Hint regression assertions enabled.');
   runHintRegressionScenario();
 }
+
+loadZoomLevel();
 
 const hasImportApplyPending = localStorage.getItem(IMPORT_APPLY_PENDING_KEY) === '1';
 if(hasImportApplyPending){
