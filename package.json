@@ -1,6 +1,34 @@
 {
+  "name": "rezanow-site",
+  "version": "1.0.1",
+  "description": "",
+  "main": "test-export-import.js",
   "dependencies": {
-    "jsdom": "^29.1.1",
-    "playwright": "^1.59.1"
-  }
+    "corepack": "^0.34.6",
+    "http-server": "^14.1.1",
+    "jsdom": "^28.1.0",
+    "npm": "^11.9.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "playwright": "^1.58.2",
+    "serve": "^14.2.5"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "serve . -l 3000",
+    "test:e2e": "playwright test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Rezanow/rezanow-site.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Rezanow/rezanow-site/issues"
+  },
+  "homepage": "https://github.com/Rezanow/rezanow-site#readme"
 }
